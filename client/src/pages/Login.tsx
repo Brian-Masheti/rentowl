@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import AuthLayout from '../components/auth/AuthLayout';
 
 const API_URL =
   window.location.hostname === 'localhost'
@@ -16,9 +17,19 @@ const leftImages = [
   '/images/6.jpg',
 ];
 
+const EyeIcon = ({ open }: { open: boolean }) =>
+  open ? (
+    // Eye open SVG
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+  ) : (
+    // Eye closed SVG
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95m3.362-2.675A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.293 5.03M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 6L6 6" /></svg>
+  );
+
 const Login: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -48,10 +59,8 @@ const Login: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('token', data.token);
-      // Store user info (including role) in localStorage if available
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
-        // Redirect based on role
         if (data.user.role === 'landlord') {
           navigate('/landlord-dashboard');
         } else if (data.user.role === 'caretaker') {
@@ -59,7 +68,7 @@ const Login: React.FC = () => {
         } else if (data.user.role === 'tenant') {
           navigate('/tenant-dashboard');
         } else if (data.user.role === 'super_admin') {
-          navigate('/super-admin-dashboard'); // You can create this route/component
+          navigate('/super-admin-dashboard');
         } else {
           setError('Unknown user role.');
         }
@@ -96,134 +105,110 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side: Slideshow */}
-      <div className="md:w-1/2 w-full min-h-[220px] flex items-center justify-center relative overflow-hidden order-2 md:order-1" style={{ minHeight: '100vh', position: 'relative' }}>
-        <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-          {leftImages.map((img, i) => (
-            <img
-              key={img}
-              src={img}
-              alt={`slideshow-${i}`}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                opacity: i === slideIndex ? 1 : 0,
-                zIndex: i === slideIndex ? 10 : 0,
-                transition: 'opacity 1s',
-                background: '#FFE3BB',
-              }}
+    <AuthLayout title="Login to access your RentOwl dashboard" images={[leftImages[slideIndex]]}>
+      <form className="space-y-6 md:space-y-7" onSubmit={handleLogin}>
+        <div>
+          <label htmlFor="identifier" className="block text-sm font-semibold mb-1" style={{ color: '#23272F' }}>Username or Email</label>
+          <input
+            id="identifier"
+            type="text"
+            autoComplete="username"
+            required
+            className="w-full rounded-full border px-4 py-3 text-base focus:outline-none focus:ring-2 transition-all"
+            style={{ color: '#23272F', background: '#F9E7D0', borderColor: '#03A6A1', boxShadow: 'none' }}
+            value={identifier}
+            onChange={e => setIdentifier(e.target.value)}
+            placeholder="Enter your username or email"
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="block text-sm font-semibold mb-1" style={{ color: '#23272F' }}>Password</label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              className="w-full rounded-full border px-4 py-3 text-base focus:outline-none focus:ring-2 transition-all pr-12"
+              style={{ color: '#23272F', background: '#F9E7D0', borderColor: '#03A6A1', boxShadow: 'none' }}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter your password"
             />
-          ))}
-        </div>
-      </div>
-      {/* Right Side: Login Form */}
-      <div className="md:w-1/2 w-full flex flex-col justify-center items-center min-h-screen relative p-0 order-1 md:order-2" style={{ background: '#FFE3BB' }}>
-        {/* Logo in top-left, responsive */}
-        <div className="absolute top-4 left-4 md:top-8 md:left-8 flex flex-col items-start z-10">
-          <img src="/images/logo2.png" alt="RentOwl Logo" className="h-10 md:h-12 mb-1" style={{ filter: 'drop-shadow(0 1px 2px #fff)' }} />
-          <span className="text-xs text-gray-600 font-semibold tracking-wide">RentOwl v1.0.0</span>
-        </div>
-        <div className="w-full max-w-md px-4 sm:px-8 py-8 md:py-12 flex flex-col justify-center" style={{ minHeight: 420 }}>
-          <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 tracking-wide text-left" style={{ color: '#23272F' }}>Login to access your RentOwl dashboard</h2>
-          <form className="space-y-6 md:space-y-7" onSubmit={handleLogin}>
-            <div>
-              <label htmlFor="identifier" className="block text-sm font-semibold mb-1" style={{ color: '#23272F' }}>Username or Email</label>
-              <input
-                id="identifier"
-                type="text"
-                autoComplete="username"
-                required
-                className="w-full rounded-full border px-4 py-3 text-base focus:outline-none focus:ring-2 transition-all"
-                style={{ color: '#23272F', background: '#F9E7D0', borderColor: '#03A6A1', boxShadow: 'none' }}
-                value={identifier}
-                onChange={e => setIdentifier(e.target.value)}
-                placeholder="Enter your username or email"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold mb-1" style={{ color: '#23272F' }}>Password</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="w-full rounded-full border px-4 py-3 text-base focus:outline-none focus:ring-2 transition-all"
-                style={{ color: '#23272F', background: '#F9E7D0', borderColor: '#03A6A1', boxShadow: 'none' }}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="text-sm font-semibold hover:underline text-[#03A6A1] mt-2"
-                  onClick={() => setShowForgot(true)}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </div>
-            {error && <div className="text-sm mb-2" style={{ color: '#FF4F0F' }}>{error}</div>}
             <button
-              type="submit"
-              className="w-full py-3 px-4 rounded-full font-bold text-lg transition-colors"
-              style={{ background: '#03A6A1', color: 'white', letterSpacing: 1 }}
-              disabled={loading || !identifier || !password}
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#03A6A1] hover:text-[#FFA673] focus:outline-none"
+              tabIndex={-1}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              <EyeIcon open={showPassword} />
             </button>
-            <div className="mt-4 flex flex-col items-center gap-2">
-              <button type="button" onClick={handleGoogleLogin} className="bg-[#FFA673] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#03A6A1] transition flex items-center gap-2">
-                <span>Login with Google</span>
-              </button>
-            </div>
-            <div className="mt-4 text-center">
-              <span className="text-sm text-gray-700">Don't have an account?</span>
-              <Link to="/register" className="ml-2 text-sm font-semibold hover:underline" style={{ color: '#03A6A1' }}>Register</Link>
-            </div>
-          </form>
-          {/* Forgot Password Modal */}
-          {showForgot && (
-            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255, 227, 187, 0.95)' }}>
-              <div className="bg-[#FFE3BB] rounded-2xl p-6 w-full max-w-sm shadow-lg relative border-2 border-[#03A6A1]">
-                <button
-                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
-                  onClick={() => { setShowForgot(false); setForgotMsg(null); setForgotEmail(''); }}
-                  aria-label="Close"
-                >
-                  &times;
-                </button>
-                <h3 className="text-lg font-bold mb-2 text-[#03A6A1]">Forgot Password</h3>
-                <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
-                  <input
-                    type="email"
-                    className="w-full px-4 py-2 rounded-full border border-gray-300 focus:border-[#03A6A1]"
-                    value={forgotEmail}
-                    onChange={e => setForgotEmail(e.target.value)}
-                    required
-                    placeholder="Enter your email address"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition"
-                    disabled={forgotLoading}
-                  >
-                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
-                  </button>
-                </form>
-                {forgotMsg && <div className="mt-2 text-sm text-green-600">{forgotMsg}</div>}
-              </div>
-            </div>
-          )}
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-sm font-semibold hover:underline text-[#03A6A1] mt-2"
+              onClick={() => setShowForgot(true)}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              Forgot Password?
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+        {error && <div className="text-sm mb-2" style={{ color: '#FF4F0F' }}>{error}</div>}
+        <button
+          type="submit"
+          className="w-full py-3 px-4 rounded-full font-bold text-lg transition-colors"
+          style={{ background: '#03A6A1', color: 'white', letterSpacing: 1 }}
+          disabled={loading || !identifier || !password}
+        >
+          {loading ? 'Logging in...' : 'Login'}
+        </button>
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <button type="button" onClick={handleGoogleLogin} className="bg-[#FFA673] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#03A6A1] transition flex items-center gap-2">
+            <span>Login with Google</span>
+          </button>
+        </div>
+        <div className="mt-4 text-center">
+          <span className="text-sm text-gray-700">Don't have an account?</span>
+          <Link to="/register" className="ml-2 text-sm font-semibold hover:underline" style={{ color: '#03A6A1' }}>Register</Link>
+        </div>
+      </form>
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255, 227, 187, 0.95)' }}>
+          <div className="bg-[#FFE3BB] rounded-2xl p-6 w-full max-w-sm shadow-lg relative border-2 border-[#03A6A1]">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+              onClick={() => { setShowForgot(false); setForgotMsg(null); setForgotEmail(''); }}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-bold mb-2 text-[#03A6A1]">Forgot Password</h3>
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+              <input
+                type="email"
+                className="w-full px-4 py-2 rounded-full border border-gray-300 focus:border-[#03A6A1]"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                required
+                placeholder="Enter your email address"
+              />
+              <button
+                type="submit"
+                className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition"
+                disabled={forgotLoading}
+              >
+                {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+            {forgotMsg && <div className="mt-2 text-sm text-green-600">{forgotMsg}</div>}
+          </div>
+        </div>
+      )}
+    </AuthLayout>
   );
 };
 
