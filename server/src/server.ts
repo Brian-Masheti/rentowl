@@ -9,6 +9,7 @@ import propertyRoutes from './routes/propertyRoutes';
 import maintenanceRoutes from './routes/maintenanceRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
+import financialRoutes from './routes/financialRoutes';
 import { setupSocket } from './socket';
 // Start payment reminder cron job
 import './utils/paymentReminderJob';
@@ -50,6 +51,7 @@ import { checkLandlordSubscription } from './middleware/landlordSubscriptionMidd
 
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/financial', financialRoutes);
 
 // Block expired landlords for all protected landlord routes
 app.use('/api/properties', checkLandlordSubscription);

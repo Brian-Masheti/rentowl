@@ -16,6 +16,7 @@ import {
   FaChartBar,
   FaBalanceScale
 } from 'react-icons/fa';
+import FinancialReport from '../financial/FinancialReport';
 
 const menuItems = [
   { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
@@ -92,15 +93,15 @@ const sectionContent: Record<string, React.ReactNode> = {
   properties: (
     <PropertySection />
   ),
-  'financial-reports': <p>View financial reports.</p>,
+  'financial-reports': <FinancialReport type="report" />,
   'tenant-statements': <p>See tenant statements.</p>,
   'caretaker-management': <p>Manage caretakers here.</p>,
   'caretaker-actions': <p>View caretaker actions.</p>,
   'legal-documents': <p>Access legal documents.</p>,
   'tenant-checkin': <p>View tenant check-in documents.</p>,
-  'monthly-income': <p>See your monthly income.</p>,
-  'occupancy-vacancy': <p>Check occupancy vs. vacancy rates.</p>,
-  'rent-arrears': <p>View rent arrears information.</p>,
+  'monthly-income': <FinancialReport type="monthly-income" />,
+  'occupancy-vacancy': <FinancialReport type="occupancy" />,
+  'rent-arrears': <FinancialReport type="arrears" />,
   profile: <p>View and edit your profile information.</p>,
 };
 
