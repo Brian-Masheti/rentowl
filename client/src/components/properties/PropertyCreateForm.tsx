@@ -5,10 +5,20 @@ interface PropertyCreateFormProps {
   onClose?: () => void;
 }
 
+const DEFAULT_UNIT_TYPES = [
+  'Bedsitter',
+  'Studio',
+  'Single Room',
+  'Double Room',
+  '1 Bedroom',
+  '2 Bedroom',
+  '3 Bedroom',
+  'Other',
+];
+
 const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onClose }) => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [rentAmount, setRentAmount] = useState('');
   const [description, setDescription] = useState('');
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [gallery, setGallery] = useState<File[]>([]);
@@ -18,8 +28,13 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // New state for units
+  const [isUniform, setIsUniform] = useState<'yes' | 'no' | ''>('');
+  const [units, setUnits] = useState([
+    { type: '', count: '', rent: '' }
+  ]);
+
   const API_URL = import.meta.env.VITE_API_URL || '';
-  console.log('API_URL for property creation:', API_URL);
 
   const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,17 +57,41 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
     setGalleryPreviews(validFiles.map(f => URL.createObjectURL(f)));
   };
 
+  const handleUnitChange = (idx: number, field: 'type' | 'count' | 'rent', value: string) => {
+    setUnits(prev => prev.map((u, i) => i === idx ? { ...u, [field]: value } : u));
+  };
+
+  const handleAddUnit = () => {
+    setUnits(prev => [...prev, { type: '', count: '', rent: '' }]);
+  };
+
+  const handleRemoveUnit = (idx: number) => {
+    setUnits(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
     setLoading(true);
     try {
+      // Validate units
+      const filteredUnits = units.filter(u => u.type && u.count && u.rent);
+      if (filteredUnits.length === 0) {
+        setError('Please specify at least one unit type with count and rent.');
+        setLoading(false);
+        return;
+      }
+      const unitsPayload = filteredUnits.map(u => ({
+        type: u.type,
+        count: Number(u.count),
+        rent: Number(u.rent),
+      }));
       const formData = new FormData();
       formData.append('name', name);
       formData.append('address', address);
-      formData.append('rentAmount', rentAmount);
       formData.append('description', description);
+      formData.append('units', JSON.stringify(unitsPayload));
       if (profilePic) formData.append('profilePic', profilePic);
       gallery.forEach((file, idx) => formData.append('gallery', file));
       const token = localStorage.getItem('token');
@@ -75,6 +114,8 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
       setGallery([]);
       setProfilePicPreview(null);
       setGalleryPreviews([]);
+      setUnits([{ type: '', count: '', rent: '' }]);
+      setIsUniform('');
       if (onSuccess) onSuccess();
     } catch (err: any) {
       setError(err.message || 'Failed to create property');
@@ -119,16 +160,103 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
         />
       </div>
       <div>
-        <label className="block font-semibold mb-1">Rent Amount</label>
-        <input
-          type="number"
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A6A1]"
-          value={rentAmount}
-          onChange={e => setRentAmount(e.target.value)}
-          required
-          min={0}
-        />
+        <label className="block font-semibold mb-1">Does this property have only one type of unit?</label>
+        <div className="flex gap-4 mt-1">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="isUniform"
+              value="yes"
+              checked={isUniform === 'yes'}
+              onChange={() => {
+                setIsUniform('yes');
+                setUnits([{ type: '', count: '', rent: '' }]);
+              }}
+              required
+            />
+            Yes
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="isUniform"
+              value="no"
+              checked={isUniform === 'no'}
+              onChange={() => {
+                setIsUniform('no');
+                setUnits([{ type: '', count: '', rent: '' }]);
+              }}
+              required
+            />
+            No (Mixed units)
+          </label>
+        </div>
       </div>
+      {isUniform && (
+        <div className="flex flex-col gap-2 border p-3 rounded bg-[#F8F8F8]">
+          {units.map((unit, idx) => (
+            <div key={idx} className="flex flex-wrap gap-2 items-end border-b pb-2 mb-2 last:border-b-0 last:pb-0 last:mb-0">
+              <div>
+                <label className="block text-sm font-semibold mb-1">Unit Type</label>
+                <select
+                  className="border rounded px-2 py-1"
+                  value={unit.type}
+                  onChange={e => handleUnitChange(idx, 'type', e.target.value)}
+                  required
+                >
+                  <option value="">Select type</option>
+                  {DEFAULT_UNIT_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1">Number of Units</label>
+                <input
+                  type="number"
+                  className="border rounded px-2 py-1"
+                  value={unit.count}
+                  onChange={e => handleUnitChange(idx, 'count', e.target.value)}
+                  min={1}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1">Rent per Unit</label>
+                <input
+                  type="number"
+                  className="border rounded px-2 py-1"
+                  value={unit.rent}
+                  onChange={e => handleUnitChange(idx, 'rent', e.target.value)}
+                  min={0}
+                  required
+                />
+              </div>
+              {/* Only show remove/add buttons for mixed units */}
+              {isUniform === 'no' && units.length > 1 && (
+                <button
+                  type="button"
+                  className="ml-2 text-[#FF4F0F] font-bold text-lg"
+                  onClick={() => handleRemoveUnit(idx)}
+                  aria-label="Remove unit type"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+          {/* Only show add button for mixed units */}
+          {isUniform === 'no' && (
+            <button
+              type="button"
+              className="bg-[#03A6A1] text-white px-3 py-1 rounded hover:bg-[#FFA673] transition font-semibold mt-2"
+              onClick={handleAddUnit}
+            >
+              + Add Another Unit Type
+            </button>
+          )}
+        </div>
+      )}
       <div>
         <label className="block font-semibold mb-1">Description</label>
         <textarea

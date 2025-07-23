@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 
+interface PropertyUnit {
+  type: string;
+  count: number;
+  rent: number;
+}
 interface Property {
   _id: string;
   name: string;
   address: string;
-  rentAmount: number;
+  units: PropertyUnit[];
   description?: string;
   profilePic?: string;
   gallery?: string[];
@@ -231,32 +236,37 @@ const PropertyList: React.FC<PropertyListProps> = ({ refreshToken }) => {
             {/* Accent bar */}
             <div className="h-2 w-full bg-gradient-to-r from-[#03A6A1] via-[#FFA673] to-[#03A6A1]" />
             <div className="p-4 flex-1 flex flex-col">
-            {/* Edit button - bottom right floating */}
-            <button
-              className="absolute bottom-4 right-16 bg-[#FF4F0F] hover:bg-[#FFA673] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10 transition-colors duration-200 border-2 border-white"
-              onClick={() => setDeleteModal({ open: true, propertyId: property._id })}
-              aria-label="Delete property"
-              type="button"
-              style={{ boxShadow: '0 2px 8px rgba(255,79,15,0.15)' }}
+            {/* Edit/Delete buttons - responsive stack for mobile */}
+            <div
+              className="absolute flex flex-col items-end gap-2 z-20"
+              style={{ right: 12, bottom: 12 }}
             >
-              {/* Trash bin icon */}
-              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2">
-                <rect x="6" y="9" width="12" height="9" rx="2" fill="#FF4F0F" />
-                <path d="M9 9V7a3 3 0 013-3v0a3 3 0 013 3v2" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                <path d="M10 13v3M14 13v3" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button
-              className="absolute bottom-4 right-4 bg-[#03A6A1] hover:bg-[#FFA673] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10 transition-colors duration-200 border-2 border-white"
-              onClick={() => handleEdit(property)}
-              aria-label="Edit property"
-              type="button"
-              style={{ boxShadow: '0 2px 8px rgba(3,166,161,0.15)' }}
-            >
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0V17h4" />
-              </svg>
-            </button>
+              <button
+                className="bg-[#FF4F0F] hover:bg-[#FFA673] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors duration-200 border-2 border-white mb-1"
+                onClick={e => { e.stopPropagation(); setDeleteModal({ open: true, propertyId: property._id }); }}
+                aria-label="Delete property"
+                type="button"
+                style={{ boxShadow: '0 2px 8px rgba(255,79,15,0.15)' }}
+              >
+                {/* Trash bin icon */}
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2">
+                  <rect x="6" y="9" width="12" height="9" rx="2" fill="#FF4F0F" />
+                  <path d="M9 9V7a3 3 0 013-3v0a3 3 0 013 3v2" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M10 13v3M14 13v3" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+              <button
+                className="bg-[#03A6A1] hover:bg-[#FFA673] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors duration-200 border-2 border-white"
+                onClick={e => { e.stopPropagation(); handleEdit(property); }}
+                aria-label="Edit property"
+                type="button"
+                style={{ boxShadow: '0 2px 8px rgba(3,166,161,0.15)' }}
+              >
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0V17h4" />
+                </svg>
+              </button>
+            </div>
             {property.profilePic && (
                 <img
                   src={getImageUrl(property.profilePic)}
@@ -271,7 +281,22 @@ const PropertyList: React.FC<PropertyListProps> = ({ refreshToken }) => {
                 <span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1] mr-1" />
                 {property.address}
               </div>
-              <div className="text-base text-[#FFA673] font-bold mb-1">Rent: <span className="text-[#03A6A1]">KES {property.rentAmount}</span></div>
+              <div className="text-base text-[#FFA673] font-bold mb-1">
+                {property.units && property.units.length > 0 ? (
+                  <div className="text-left">
+                    Rents: <span className="text-[#03A6A1]">Kshs</span>
+                    <ul className="ml-2 mt-1 text-[#03A6A1] text-sm">
+                      {property.units.map((unit, idx) => (
+                        <li key={idx}>
+                          {unit.type.toLowerCase()}: {unit.rent.toLocaleString()}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <span className="text-[#03A6A1]">No unit info</span>
+                )}
+              </div>
               <div className="text-xs text-gray-600 mb-2" style={{ whiteSpace: 'pre-line' }}>{property.description || ''}</div>
               {property.gallery && property.gallery.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
@@ -420,7 +445,22 @@ const PropertyList: React.FC<PropertyListProps> = ({ refreshToken }) => {
               <img src={getImageUrl(detailsModal.property.profilePic)} alt="Profile" className="h-40 w-full object-cover rounded-xl mb-4 border border-[#FFA673]/40" />
             )}
             <div className="mb-2 text-gray-700 font-medium">{detailsModal.property.address}</div>
-            <div className="mb-2 text-[#FFA673] font-bold">Rent: <span className="text-[#03A6A1]">KES {detailsModal.property.rentAmount}</span></div>
+            <div className="mb-2 text-[#FFA673] font-bold">
+              {detailsModal.property.units && detailsModal.property.units.length > 0 ? (
+                <div className="text-left">
+                  Rents: <span className="text-[#03A6A1]">Kshs</span>
+                  <ul className="ml-2 mt-1 text-[#03A6A1] text-sm">
+                    {detailsModal.property.units.map((unit: PropertyUnit, idx: number) => (
+                      <li key={idx}>
+                        {unit.type.toLowerCase()}: {unit.rent.toLocaleString()}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <span className="text-[#03A6A1]">No unit info</span>
+              )}
+            </div>
             <div className="mb-4 text-gray-600" style={{ whiteSpace: 'pre-line' }}>{detailsModal.property.description}</div>
             {detailsModal.property.gallery && detailsModal.property.gallery.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">

@@ -5,7 +5,15 @@ import { Types } from 'mongoose';
 // Create a new property (Landlord only, with image upload)
 export const createProperty = async (req: Request, res: Response) => {
   try {
-    const { name, address, caretaker, rentAmount, description } = req.body;
+    let { name, address, caretaker, units, description } = req.body;
+    // Parse units if sent as JSON string (from FormData)
+    if (typeof units === 'string') {
+      try {
+        units = JSON.parse(units);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid units format.' });
+      }
+    }
     const landlord = req.user?.id;
     // Handle images
     let profilePic: string | undefined = undefined;
@@ -22,13 +30,22 @@ export const createProperty = async (req: Request, res: Response) => {
         gallery = req.files.gallery.map((file: Express.Multer.File) => file.path.replace(/\\/g, '/'));
       }
     }
+    // Validate units array
+    if (!Array.isArray(units) || units.length === 0) {
+      return res.status(400).json({ error: 'Units array is required and must have at least one unit type.' });
+    }
+    for (const unit of units) {
+      if (!unit.type || typeof unit.type !== 'string' || typeof unit.count !== 'number' || typeof unit.rent !== 'number') {
+        return res.status(400).json({ error: 'Each unit must have a type (string), count (number), and rent (number).' });
+      }
+    }
     const property = await Property.create({
       name,
       address,
       landlord,
       caretaker: caretaker || null,
       tenants: [],
-      rentAmount,
+      units,
       description,
       profilePic,
       gallery,
@@ -71,7 +88,16 @@ export const updateProperty = async (req: Request, res: Response) => {
     const updates: any = {};
     if (typeof req.body.name === 'string') updates.name = req.body.name;
     if (typeof req.body.address === 'string') updates.address = req.body.address;
-    if (typeof req.body.rentAmount === 'string' || typeof req.body.rentAmount === 'number') updates.rentAmount = req.body.rentAmount;
+    // Parse units for update as well
+    let updateUnits = req.body.units;
+    if (typeof updateUnits === 'string') {
+      try {
+        updateUnits = JSON.parse(updateUnits);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid units format.' });
+      }
+    }
+    if (Array.isArray(updateUnits)) updates.units = updateUnits;
     if (typeof req.body.description === 'string') updates.description = req.body.description;
     if (typeof req.body.caretaker === 'string') updates.caretaker = req.body.caretaker;
 

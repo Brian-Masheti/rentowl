@@ -7,7 +7,11 @@ export interface IProperty extends Document {
   caretaker: Types.ObjectId | null;
   tenants: Types.ObjectId[];
   status: 'occupied' | 'vacant';
-  rentAmount: number;
+  units: {
+    type: string; // e.g., "Bedsitter", "1 Bedroom"
+    count: number; // number of such units
+    rent: number; // rent per unit
+  }[];
   description?: string;
   profilePic?: string;
   gallery: string[];
@@ -23,7 +27,13 @@ const PropertySchema = new Schema<IProperty>(
     caretaker: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     tenants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     status: { type: String, enum: ['occupied', 'vacant'], default: 'vacant' },
-    rentAmount: { type: Number, required: true },
+    units: [
+      {
+        type: { type: String, required: true },
+        count: { type: Number, required: true },
+        rent: { type: Number, required: true },
+      }
+    ],
     description: { type: String },
     profilePic: { type: String },
     gallery: [{ type: String }],
