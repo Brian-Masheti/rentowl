@@ -10,8 +10,7 @@ import {
   FaBullhorn,
   FaClipboardList,
   FaCogs,
-  FaBook,
-  FaUserShield
+  FaBook
 } from 'react-icons/fa';
 
 const menuItems = [
