@@ -14,6 +14,8 @@ const DEFAULT_UNIT_TYPES = [
   '1 Bedroom',
   '2 Bedroom',
   '3 Bedroom',
+  'Condominium',
+  'Loft',
   'Other',
 ];
 
