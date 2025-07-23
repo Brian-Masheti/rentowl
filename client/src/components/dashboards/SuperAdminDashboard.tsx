@@ -71,16 +71,18 @@ const SuperAdminDashboard: React.FC = () => {
 
   return (
     <>
-      <MobileDashboardView
-        menuItems={menuItems}
-        sectionTitles={sectionTitles}
-        sectionContent={sectionContent}
-        dashboardLabel="Super Admin Dashboard"
-        selectedSection={selectedSection}
-        setSelectedSection={setSelectedSection}
-        sidebarBgColor="#23272F"
-      />
-      <div style={{ display: 'flex', minHeight: '100vh', background: '#FFE3BB' }}>
+      <div className="block md:hidden">
+        <MobileDashboardView
+          menuItems={menuItems}
+          sectionTitles={sectionTitles}
+          sectionContent={sectionContent}
+          dashboardLabel="Super Admin Dashboard"
+          selectedSection={selectedSection}
+          setSelectedSection={setSelectedSection}
+          sidebarBgColor="#23272F"
+        />
+      </div>
+      <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
         <SuperAdminSidebar onSelect={setSelectedSection} selected={selectedSection} />
         <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
           <h1 style={{ color: '#03A6A1', fontWeight: 700, fontSize: 32 }}>{sectionTitles[selectedSection] || 'Super Admin Dashboard'}</h1>

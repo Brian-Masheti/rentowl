@@ -24,7 +24,18 @@ router.post(
 );
 router.get('/', requireAuth, requireRole(['landlord']), getLandlordProperties);
 router.get('/:id', requireAuth, requireRole(['landlord', 'caretaker', 'tenant']), getPropertyById);
-router.put('/:id', requireAuth, requireRole(['landlord']), updateProperty);
+import { upload } from '../middleware/uploadMiddleware';
+
+router.put(
+  '/:id',
+  requireAuth,
+  requireRole(['landlord']),
+  upload.fields([
+    { name: 'profilePic', maxCount: 1 },
+    { name: 'gallery', maxCount: 10 }
+  ]),
+  updateProperty
+);
 router.delete('/:id', requireAuth, requireRole(['landlord']), deleteProperty);
 
 export default router;

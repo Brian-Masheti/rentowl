@@ -14,12 +14,12 @@ export const createProperty = async (req: Request, res: Response) => {
       // @ts-ignore
       if (req.files.profilePic && req.files.profilePic[0]) {
         // @ts-ignore
-        profilePic = req.files.profilePic[0].path;
+        profilePic = req.files.profilePic[0].path.replace(/\\/g, '/');
       }
       // @ts-ignore
       if (req.files.gallery) {
         // @ts-ignore
-        gallery = req.files.gallery.map((file: Express.Multer.File) => file.path);
+        gallery = req.files.gallery.map((file: Express.Multer.File) => file.path.replace(/\\/g, '/'));
       }
     }
     const property = await Property.create({
@@ -35,15 +35,16 @@ export const createProperty = async (req: Request, res: Response) => {
     });
     res.status(201).json(property);
   } catch (err) {
+    console.error('Error in createProperty:', err);
     res.status(500).json({ error: 'Failed to create property.' });
   }
 };
 
-// Get all properties for a landlord
+// Get all properties for a landlord (excluding soft-deleted)
 export const getLandlordProperties = async (req: Request, res: Response) => {
   try {
     const landlord = req.user?.id;
-    const properties = await Property.find({ landlord }).populate('caretaker tenants');
+    const properties = await Property.find({ landlord, isDeleted: { $ne: true } }).populate('caretaker tenants');
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch properties.' });
@@ -62,26 +63,61 @@ export const getPropertyById = async (req: Request, res: Response) => {
   }
 };
 
-// Update a property (Landlord only)
+// Update a property (Landlord only, with image upload support)
 export const updateProperty = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    // Best practice: explicitly set updatable fields
+    const updates: any = {};
+    if (typeof req.body.name === 'string') updates.name = req.body.name;
+    if (typeof req.body.address === 'string') updates.address = req.body.address;
+    if (typeof req.body.rentAmount === 'string' || typeof req.body.rentAmount === 'number') updates.rentAmount = req.body.rentAmount;
+    if (typeof req.body.description === 'string') updates.description = req.body.description;
+    if (typeof req.body.caretaker === 'string') updates.caretaker = req.body.caretaker;
+
+    // Handle images
+    if (req.files) {
+      // @ts-ignore
+      if (req.files.profilePic && req.files.profilePic[0]) {
+        // @ts-ignore
+        updates.profilePic = req.files.profilePic[0].path.replace(/\\/g, '/');
+      }
+      // @ts-ignore
+      if (req.files.gallery) {
+        // @ts-ignore
+        updates.gallery = req.files.gallery.map((file: Express.Multer.File) => file.path.replace(/\\/g, '/'));
+      }
+    }
+
+    // Handle removal of profilePic or gallery images if requested
+    if (req.body.removeProfilePic === 'true') {
+      updates.profilePic = undefined;
+    }
+    if (req.body.removeGalleryIndexes) {
+      // removeGalleryIndexes should be a comma-separated string of indexes to remove
+      const indexes = req.body.removeGalleryIndexes.split(',').map((i: string) => parseInt(i, 10));
+      const property = await Property.findById(id);
+      if (property && property.gallery) {
+        updates.gallery = property.gallery.filter((_: any, idx: number) => !indexes.includes(idx));
+      }
+    }
+
     const property = await Property.findByIdAndUpdate(id, updates, { new: true });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     res.json(property);
   } catch (err) {
+    console.error('Error in updateProperty:', err);
     res.status(500).json({ error: 'Failed to update property.' });
   }
 };
 
-// Delete a property (Landlord only)
+// Soft delete a property (Landlord only)
 export const deleteProperty = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const property = await Property.findByIdAndDelete(id);
+    const property = await Property.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
-    res.json({ message: 'Property deleted.' });
+    res.json({ message: 'Property soft deleted.' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete property.' });
   }

@@ -29,6 +29,7 @@ const PropertySchema = new Schema<IProperty>(
     gallery: [{ type: String }],
     rentDueDay: { type: Number, default: 5 }, // 5th of the month
     gracePeriodDays: { type: Number, default: 3 },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

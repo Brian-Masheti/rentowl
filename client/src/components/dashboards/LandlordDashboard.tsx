@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import LandlordSidebar from '../sidebars/LandlordSidebar';
 import MobileDashboardView from './MobileDashboardView';
+
+const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
+const PropertyList = lazy(() => import('../properties/PropertyList'));
 import {
   FaHome,
   FaBuilding,
@@ -43,6 +46,41 @@ const sectionTitles: Record<string, string> = {
   profile: 'My Profile',
 };
 
+// --- PropertySection component for add button and form toggle ---
+// PropertyList is now lazy loaded above
+
+const PropertySection: React.FC = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(Date.now());
+  const handleSuccess = () => {
+    setShowForm(false);
+    setRefreshToken(Date.now()); // trigger PropertyList refresh
+  };
+  return (
+    <div>
+      <button
+        className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition mb-4 fixed bottom-8 right-8 z-50 shadow-lg"
+        onClick={() => setShowForm(true)}
+        style={{ minWidth: 160 }}
+      >
+        + Add Property
+      </button>
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowForm(false)}>
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <Suspense fallback={<div className="text-center p-8">Loading form...</div>}>
+              <PropertyCreateForm onSuccess={handleSuccess} onClose={() => setShowForm(false)} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+      <Suspense fallback={<div className="text-center p-8">Loading properties...</div>}>
+        <PropertyList refreshToken={refreshToken} />
+      </Suspense>
+    </div>
+  );
+};
+
 const sectionContent: Record<string, React.ReactNode> = {
   dashboard: (
     <>
@@ -51,7 +89,9 @@ const sectionContent: Record<string, React.ReactNode> = {
       </p>
     </>
   ),
-  properties: <p>Manage your properties here.</p>,
+  properties: (
+    <PropertySection />
+  ),
   'financial-reports': <p>View financial reports.</p>,
   'tenant-statements': <p>See tenant statements.</p>,
   'caretaker-management': <p>Manage caretakers here.</p>,
@@ -69,15 +109,17 @@ const LandlordDashboard: React.FC = () => {
 
   return (
     <>
-      <MobileDashboardView
-        menuItems={menuItems}
-        sectionTitles={sectionTitles}
-        sectionContent={sectionContent}
-        dashboardLabel="Landlord Dashboard"
-        selectedSection={selectedSection}
-        setSelectedSection={setSelectedSection}
-      />
-      <div style={{ display: 'flex', minHeight: '100vh', background: '#FFE3BB' }}>
+      <div className="block md:hidden">
+        <MobileDashboardView
+          menuItems={menuItems}
+          sectionTitles={sectionTitles}
+          sectionContent={sectionContent}
+          dashboardLabel="Landlord Dashboard"
+          selectedSection={selectedSection}
+          setSelectedSection={setSelectedSection}
+        />
+      </div>
+      <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
         <LandlordSidebar onSelect={setSelectedSection} selected={selectedSection} />
         <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
           <h1 style={{ color: '#03A6A1', fontWeight: 700, fontSize: 32 }}>{sectionTitles[selectedSection] || 'Landlord Dashboard'}</h1>
