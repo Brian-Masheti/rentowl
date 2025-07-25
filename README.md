@@ -63,7 +63,7 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 
 You can find screenshots in the `client/public/images/` folder:
 
-- ![Landing Page](./client/public/landing.png)
+- ![Landing Page](./client/public/images/landingpage.png)
 - ![Login](./client/public/images/login.png)
 - ![Register](./client/public/images/register.png)
 - ![Tenant View](./client/public/images/addingtenants.png)
