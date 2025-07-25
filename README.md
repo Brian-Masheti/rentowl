@@ -7,8 +7,8 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 ## 🚧 Project Status
 
 **This project is under active development.**  
-- The backend is fully functional and tested with Postman.
-- The frontend is being actively developed and improved.
+- The backend (Node.js/Express/MongoDB) is fully functional and tested with Postman.
+- The frontend (React/TypeScript/Vite) is being actively developed and improved.
 
 ---
 
@@ -63,17 +63,43 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 
 You can find screenshots in the `client/public/images/` folder:
 
-- ![Add Tenants](./public/images/addtenants.png)
-- ![Login](./public/images/login.png)
-- ![Register](./public/images/register.png)
+- ![Landing Page](./client/public/images/1.jpg)
+- ![Login](./client/public/images/login.png)
+- ![Register](./client/public/images/register.png)
+- ![Dashboard](./client/public/images/2.jpg)
+- ![Property Management](./client/public/images/3.jpg)
+- ![Tenant View](./client/public/images/4.jpg)
+- ![Caretaker View](./client/public/images/5.jpg)
+- ![Mobile View](./client/public/images/6.jpg)
+- ![Add Tenants](./client/public/images/addtenants.png)
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React 19, Vite, TypeScript, Tailwind CSS, Radix UI, Chart.js
-- **Backend:** Node.js, Express, MongoDB, Mongoose, JWT, Passport, Multer, Socket.io
-- **Dev Tools:** ESLint, Postman, pnpm, TypeScript
+### Frontend
+- React 19
+- Vite
+- TypeScript
+- Tailwind CSS
+- Radix UI
+- Chart.js
+
+### Backend
+- Node.js
+- Express
+- MongoDB
+- Mongoose
+- JWT authentication
+- Passport
+- Multer (file uploads)
+- Socket.io (real-time features)
+
+### Dev Tools
+- ESLint
+- Postman (API testing)
+- pnpm
+- TypeScript
 
 ---
 

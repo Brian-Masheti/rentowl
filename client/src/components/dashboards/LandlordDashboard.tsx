@@ -1,12 +1,9 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import LandlordSidebar from '../sidebars/LandlordSidebar';
 import MobileDashboardView from './MobileDashboardView';
-import TenantTable from '../tenants/TenantTable';
 import UserAssignmentPanel from '../shared/UserAssignmentPanel';
-import UnassignedTenantSelector from './UnassignedTenantSelector';
 import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
 import FinancialReport from '../financial/FinancialReport';
-import FilterBar from '../common/FilterBar';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import {
   FaHome,
@@ -54,7 +51,7 @@ const AddTenantSection: React.FC<{ properties: PropertyType[]; refresh: () => vo
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ ...data.tenant, propertyId: data.propertyId }),
+      body: JSON.stringify(data),
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

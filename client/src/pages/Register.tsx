@@ -273,9 +273,17 @@ const Register: React.FC = () => {
         </button>
         <span className="text-xs text-[#FFA673] mt-1">Google login is coming soon!</span>
       </div>
-      <div className="mt-4 text-center">
-        <span className="text-sm text-gray-700">Already have an account?</span>
-        <Link to="/" className="ml-2 text-sm font-semibold hover:underline" style={{ color: '#03A6A1' }}>Login</Link>
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <div className="text-center">
+          <span className="text-sm text-gray-700">Already have an account?</span>
+          <Link to="/login" className="ml-2 text-sm font-semibold hover:underline" style={{ color: '#03A6A1' }}>Login</Link>
+        </div>
+        <button
+          className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition mt-2"
+          onClick={() => navigate('/')}
+        >
+          Back to Home
+        </button>
       </div>
       {/* Success Modal */}
       {showSuccessModal && (

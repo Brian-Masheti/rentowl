@@ -11,7 +11,7 @@ const SLIDESHOW_INTERVAL = 5000;
 const AuthLayout: React.FC<AuthLayoutProps> = ({ title, children, images = [] }) => {
   // Slideshow state for desktop
   const [slideIndex, setSlideIndex] = useState(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (images.length > 1) {

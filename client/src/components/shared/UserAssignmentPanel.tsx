@@ -1,16 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 
+interface PropertyUnit {
+  type: string;
+}
+
+interface Property {
+  id: string;
+  name: string;
+  units?: PropertyUnit[];
+}
+
+interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  status?: string;
+  property?: string;
+  propertyName?: string;
+  propertyId?: string;
+  unitType?: string;
+}
+
 interface UserAssignmentPanelProps {
   userType: 'tenant' | 'caretaker';
-  properties: any[];
-  fetchUsers: () => Promise<any[]>;
+  properties: Property[];
+  fetchUsers: () => Promise<User[]>;
   onAssign: (userIds: string[], propertyId: string, unitType: string) => void;
   onResendInvite?: (userId: string) => void;
-  getUnitAvailability?: (propertyId: string, unitType: string) => number;
-  getUserDetails?: (userId: string) => Promise<any>;
+  getUserDetails?: (userId: string) => Promise<User>;
   onWelcomeMessage?: (userId: string, message: string) => void;
-  fetchAuditLog?: () => Promise<any[]>;
 }
 
 const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
@@ -19,22 +40,20 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
   fetchUsers,
   onAssign,
   onResendInvite,
-  getUnitAvailability,
   getUserDetails,
   onWelcomeMessage,
-  fetchAuditLog,
 }) => {
   // State for users, selection, filters, modals, etc.
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   // Per-row selection state
-  const [rowSelections, setRowSelections] = useState<{ [userId: string]: { propertyId: string; unitType: string } }>({});
+  const [rowSelections, setRowSelections] = useState<{ [userId: string]: { propertyId: string; unitType: string; message?: string } }>({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [propertyFilter, setPropertyFilter] = useState('');
   const [unitTypeFilter, setUnitTypeFilter] = useState('');
-  const [showDetails, setShowDetails] = useState<any | null>(null);
-  const [showWelcomeModal, setShowWelcomeModal] = useState<any | null>(null);
+  const [showDetails, setShowDetails] = useState<User | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<User | null>(null);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +82,7 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
 
   // Unique property/unitType/status options
   const propertyOptions = Array.from(new Set(properties.map(p => p.name)));
-  const unitTypeOptions = Array.from(new Set(properties.flatMap(p => p.units?.map((u: any) => u.type) || [])));
+  const unitTypeOptions = Array.from(new Set(properties.flatMap(p => (p.units ? p.units.map((u: PropertyUnit) => u.type) : []))));
   const statusOptions = ['Active', 'Pending', 'Deleted', 'Invited'];
 
   // Bulk assign handler removed: per-row assignment only
@@ -101,73 +120,7 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
         </button>
       </div>
       {/* Bulk Assign Modal */}
-      {showDetails === 'bulk' && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowDetails(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-8 min-w-[320px] max-w-[90vw] relative" style={{ border: '2px solid #03A6A1' }} onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold mb-4" style={{ color: '#03A6A1' }}>Bulk Assign Tenants</h2>
-            <table className="min-w-full bg-white border border-[#FFA673]/40 rounded-xl shadow mb-4">
-              <thead>
-                <tr className="bg-[#FFE3BB] text-[#03A6A1]">
-                  <th className="py-2 px-4 text-left font-bold">Name</th>
-                  <th className="py-2 px-4 text-left font-bold">Property</th>
-                  <th className="py-2 px-4 text-left font-bold">Unit Type</th>
-                  <th className="py-2 px-4 text-left font-bold">Assign</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedUsers.map(userId => {
-                  const u = users.find(u => u._id === userId);
-                  return (
-                    <tr key={userId}>
-                      <td className="py-2 px-4">{u?.firstName} {u?.lastName}</td>
-                      <td className="py-2 px-4">
-                        <select
-                          value={u?.propertyId || ''}
-                          onChange={e => {
-                            u.propertyId = e.target.value;
-                            setUnitTypes(properties.find(p => p.id === e.target.value)?.units?.map((u: any) => u.type) || []);
-                          }}
-                          className="border rounded px-2 py-1"
-                        >
-                          <option value="">Select Property</option>
-                          {properties.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 px-4">
-                        <select
-                          value={u?.unitType || ''}
-                          onChange={e => { u.unitType = e.target.value; setUnitTypes(unitTypes); }}
-                          className="border rounded px-2 py-1"
-                        >
-                          <option value="">Select Unit Type</option>
-                          {unitTypes.map(u => (
-                            <option key={u} value={u}>{u}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 px-4">
-                        <button
-                          className="bg-[#03A6A1] text-white font-bold px-2 py-1 rounded hover:bg-[#FFA673] transition"
-                          disabled={!u?.propertyId || !u?.unitType}
-                          onClick={() => {
-                            onAssign([userId], u.propertyId, u.unitType);
-                            setSelectedUsers(selectedUsers.filter(id => id !== userId));
-                          }}
-                        >
-                          Assign
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <button className="bg-gray-300 text-gray-800 rounded px-4 py-2 font-bold" onClick={() => setShowDetails(null)}>Close</button>
-          </div>
-        </div>
-      )}
+      {/* Bulk Assign Modal removed: feature not implemented, and code caused type errors */}
       {/* User Table - Responsive */}
       <div className="mt-2">
         {/* Assignment UI: Only unassigned tenants */}
@@ -215,7 +168,6 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
                     value={rowSelections[u._id]?.propertyId || ''}
                     onChange={e => {
                       const propertyId = e.target.value;
-                      const property = properties.find(p => p.id === propertyId);
                       setRowSelections(prev => ({
                         ...prev,
                         [u._id]: {
@@ -233,8 +185,7 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
                   </select>
                   {(() => {
                     const propertyId = rowSelections[u._id]?.propertyId;
-                    const property = properties.find(p => p.id === propertyId);
-                    const unitTypes = property?.units?.map((u: any) => u.type) || [];
+                    const unitTypes = (properties.find(p => p.id === propertyId)?.units ?? []).map((u: PropertyUnit) => u.type);
                     return unitTypes.length > 0 ? (
                       <select
                         value={rowSelections[u._id]?.unitType || ''}
@@ -295,22 +246,36 @@ const UserAssignmentPanel: React.FC<UserAssignmentPanelProps> = ({
             {(() => {
               const u = showWelcomeModal;
               const row = rowSelections[u._id] || {};
-              const property = properties.find(p => p.id === row.propertyId);
+              // property variable removed as it was unused
+              const propertyName = (() => {
+                const propertyObj = properties.find(p => p.id === row.propertyId);
+                return propertyObj ? propertyObj.name : '[Property]';
+              })();
               const unitType = row.unitType || '';
-              const defaultMsg = `Hi ${u.firstName}, welcome to ${property ? property.name : '[Property]'}${unitType ? `, ${unitType}` : ''}! We're excited to have you as a resident.`;
-              const [message, setMessage] = useState(defaultMsg);
+              const defaultMsg = `Hi ${u.firstName}, welcome to ${propertyName}${unitType ? `, ${unitType}` : ''}! We're excited to have you as a resident.`;
+              // Move message state to top-level for modal
+              // We'll use a controlled state for the message
+                            // const [message, setMessage] = useState(defaultMsg);
+              // Instead, use a derived state from showWelcomeModal
+              // and a top-level state for the message
               return (
                 <>
                   <textarea
                     className="w-full border rounded p-2 mb-4"
                     rows={4}
-                    value={message}
-                    onChange={e => setMessage(e.target.value)}
+                    value={row.message ?? defaultMsg}
+                    onChange={e => setRowSelections(prev => ({
+                      ...prev,
+                      [u._id]: {
+                        ...prev[u._id],
+                        message: e.target.value,
+                      },
+                    }))}
                   />
                   <button
                     className="bg-[#03A6A1] text-white rounded px-4 py-2 font-bold mr-2"
                     onClick={() => {
-                      if (onWelcomeMessage) onWelcomeMessage(u._id, message);
+                      if (onWelcomeMessage) onWelcomeMessage(u._id, row.message ?? defaultMsg);
                       setShowWelcomeModal(null);
                     }}
                   >

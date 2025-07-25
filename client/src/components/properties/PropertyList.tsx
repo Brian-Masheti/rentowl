@@ -298,9 +298,9 @@ const PropertyList: React.FC<PropertyListProps> = ({ refreshToken }) => {
                       </svg>
                     </button>
                   </div>
-                  {(property.profilePicThumb || property.profilePic) && (
+                  {property.profilePic && (
                     <LazyImage
-                      src={getImageUrl(property.profilePicThumb || property.profilePic)}
+                      src={getImageUrl(property.profilePic)}
                       alt={property.name}
                       className="h-40 w-full object-cover rounded-xl mb-2 border border-[#FFA673]/40 group-hover:shadow-lg transition-shadow duration-300"
                     />
@@ -334,7 +334,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ refreshToken }) => {
                       {property.gallery.map((img, idx) => (
                         <LazyImage
                           key={idx}
-                          src={getImageUrl((property.galleryThumbs && property.galleryThumbs[idx]) || img)}
+                          src={getImageUrl((property.gallery && property.gallery[idx]) || img)}
                           alt={`Gallery ${idx + 1}`}
                           className="h-10 w-10 object-cover rounded cursor-pointer border border-[#03A6A1] hover:scale-105 transition-transform duration-200"
                           onClick={() => openModal(property.gallery!.map(getImageUrl), idx)}

@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
+interface PropertyWithUnits {
+  id: string;
+  name: string;
+  units?: any[];
+  tenants?: any[];
+}
+
 interface AssignUserToPropertyModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { propertyId: string; tenant: TenantFormData }) => void;
+  onSubmit: (data: any) => void;
   mode: 'add' | 'edit';
-  userType: 'tenant' | 'caretaker';
-  properties: { id: string; name: string }[];
+  // userType: 'tenant' | 'caretaker';
+  properties: PropertyWithUnits[];
   initialPropertyId?: string;
   initialTenantData?: TenantFormData;
   themeColor?: string;
@@ -35,7 +42,7 @@ const AssignUserToPropertyModal: React.FC<AssignUserToPropertyModalProps> = ({
   onClose,
   onSubmit,
   mode,
-  userType,
+  // userType,
   properties,
   initialPropertyId = '',
   initialTenantData = initialTenantState,
@@ -107,7 +114,12 @@ const AssignUserToPropertyModal: React.FC<AssignUserToPropertyModalProps> = ({
     setError('');
     setLoading(true);
     try {
-      await onSubmit({ propertyId, tenant: { ...tenant, ...(needsUnitType ? { unitType } : {}) } });
+      // Always send unitType for uniform units as well
+      await onSubmit({
+        ...tenant,
+        propertyId,
+        unitType: (needsUnitType ? unitType : (selectedProperty?.units?.[0]?.type || ''))
+      });
       setSuccess('Tenant added and assigned successfully!');
       setTimeout(() => {
         setSuccess('');

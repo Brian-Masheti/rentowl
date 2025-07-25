@@ -9,8 +9,7 @@ import {
   FaClipboardList,
   FaCogs,
   FaBook,
-  FaUserShield,
-  FaSignOutAlt,
+    FaSignOutAlt,
   FaUserCircle
 } from 'react-icons/fa';
 
@@ -38,7 +37,7 @@ interface SuperAdminSidebarProps {
 
 const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ onSelect, selected }) => {
   const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 

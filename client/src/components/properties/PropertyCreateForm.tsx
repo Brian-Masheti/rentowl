@@ -110,7 +110,7 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
       formData.append('description', description);
       formData.append('units', JSON.stringify(unitsPayload));
       if (profilePic) formData.append('profilePic', profilePic);
-      gallery.forEach((file, idx) => formData.append('gallery', file));
+      gallery.forEach(file => formData.append('gallery', file));
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/properties`, {
         method: 'POST',
@@ -134,8 +134,12 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
       setUnits([{ type: '', count: '', rent: '' }]);
       setIsUniform('');
       if (onSuccess) onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create property');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to create property');
+      } else {
+        setError('Failed to create property');
+      }
     } finally {
       setLoading(false);
     }
@@ -211,14 +215,14 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
       </div>
       {isUniform && (
         <div className="flex flex-col gap-2 border p-3 rounded bg-[#F8F8F8]">
-          {units.map((unit, idx) => (
-            <div key={idx} className="flex flex-wrap gap-2 items-end border-b pb-2 mb-2 last:border-b-0 last:pb-0 last:mb-0">
+          {units.map((unit, index) => (
+            <div key={index} className="flex flex-wrap gap-2 items-end border-b pb-2 mb-2 last:border-b-0 last:pb-0 last:mb-0">
               <div>
                 <label className="block text-sm font-semibold mb-1">Unit Type</label>
                 <select
                   className="border rounded px-2 py-1"
                   value={unit.type}
-                  onChange={e => handleUnitChange(idx, 'type', e.target.value)}
+                  onChange={e => handleUnitChange(index, 'type', e.target.value)}
                   required
                 >
                   <option value="">Select type</option>
@@ -233,7 +237,7 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
                   type="number"
                   className="border rounded px-2 py-1"
                   value={unit.count}
-                  onChange={e => handleUnitChange(idx, 'count', e.target.value)}
+                  onChange={e => handleUnitChange(index, 'count', e.target.value)}
                   min={1}
                   required
                 />
@@ -244,7 +248,7 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
                   type="number"
                   className="border rounded px-2 py-1"
                   value={unit.rent}
-                  onChange={e => handleUnitChange(idx, 'rent', e.target.value)}
+                  onChange={e => handleUnitChange(index, 'rent', e.target.value)}
                   min={0}
                   required
                 />
@@ -254,7 +258,7 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
                 <button
                   type="button"
                   className="ml-2 text-[#FF4F0F] font-bold text-lg"
-                  onClick={() => handleRemoveUnit(idx)}
+                  onClick={() => handleRemoveUnit(index)}
                   aria-label="Remove unit type"
                 >
                   &times;
@@ -342,21 +346,21 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
         </div>
         {galleryPreviews.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {galleryPreviews.map((src, idx) => (
-              <div key={idx} className="relative inline-block">
-                <img src={src} alt={`Gallery Preview ${idx + 1}`} className="h-16 w-16 object-cover rounded shadow" />
-                <button
-                  type="button"
-                  className="absolute top-1 right-1 bg-white/80 text-[#FF4F0F] rounded-full w-5 h-5 flex items-center justify-center font-bold shadow hover:bg-[#FFA673]"
-                  onClick={() => {
-                    setGallery(gallery.filter((_, i) => i !== idx));
-                    setGalleryPreviews(galleryPreviews.filter((_, i) => i !== idx));
-                  }}
-                  aria-label="Remove gallery image"
-                >
-                  &times;
-                </button>
-              </div>
+            {galleryPreviews.map((src) => (
+            <div key={src} className="relative inline-block">
+            <img src={src} alt="Gallery Preview" className="h-16 w-16 object-cover rounded shadow" />
+            <button
+            type="button"
+            className="absolute top-1 right-1 bg-white/80 text-[#FF4F0F] rounded-full w-5 h-5 flex items-center justify-center font-bold shadow hover:bg-[#FFA673]"
+            onClick={() => {
+            setGallery(gallery.filter((_, i) => galleryPreviews[i] !== src));
+            setGalleryPreviews(galleryPreviews.filter((s) => s !== src));
+            }}
+            aria-label="Remove gallery image"
+            >
+            &times;
+            </button>
+            </div>
             ))}
           </div>
         )}
