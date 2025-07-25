@@ -67,6 +67,7 @@ You can find screenshots in the `client/public/images/` folder:
 - ![Login](./client/public/images/login.png)
 - ![Register](./client/public/images/register.png)
 - ![Tenant View](./client/public/images/addingtenants.png)
+- ![Property View](./client/public/images/properties.png)
 - ![Mobile View 1](./client/public/images/mobile.png)
 - ![Mobile View 2](./client/public/images/mobile2.jpg)
 
