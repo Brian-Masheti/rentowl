@@ -16,7 +16,7 @@ function isStrongPassword(password: string): boolean {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, username, email, phone, password, role } = req.body;
+    const { firstName, lastName, username, email, phone, password, role, landlord } = req.body;
     if (!firstName || !lastName || !username || !email || !phone || !password) {
       return res.status(400).json({ error: 'All fields required.' });
     }
@@ -41,7 +41,20 @@ export const register = async (req: Request, res: Response) => {
         { expiresIn: '7d' }
       );
     } else if (role === 'tenant') {
-      user = await Tenant.create({ firstName, lastName, username, email, phone, passwordHash, isActive: true });
+      // Use landlord from request body if provided (invite code), else from req.user (landlord dashboard)
+      const landlordId = landlord || req.user?.id;
+      user = await Tenant.create({ firstName, lastName, username, email, phone, passwordHash, isActive: true, landlord: landlordId });
+      // Also create in User collection for population
+      await User.create({
+        firstName,
+        lastName,
+        username,
+        email,
+        phone,
+        passwordHash,
+        role: 'tenant',
+        isActive: true,
+      });
       token = jwt.sign(
         { id: user._id, username: user.username, role: 'tenant' },
         JWT_SECRET,

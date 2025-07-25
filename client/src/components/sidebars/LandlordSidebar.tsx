@@ -19,6 +19,8 @@ const items = [
   { label: 'Properties', icon: <FaBuilding />, key: 'properties' },
   { label: 'Financial Reports', icon: <FaMoneyBillWave />, key: 'financial-reports' },
   { label: 'Tenant Statements', icon: <FaFileInvoiceDollar />, key: 'tenant-statements' },
+  { label: 'Add Tenant to Property', icon: <FaUsers />, key: 'add-tenant' },
+  { label: 'Assign Caretaker to Property', icon: <FaUserTie />, key: 'assign-caretaker' },
   { label: 'Caretaker Management', icon: <FaUserTie />, key: 'caretaker-management' },
   { label: 'Caretaker Actions', icon: <FaClipboardCheck />, key: 'caretaker-actions' },
   { label: 'Legal Documents', icon: <FaFileAlt />, key: 'legal-documents' },

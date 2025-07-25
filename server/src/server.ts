@@ -11,6 +11,7 @@ import paymentRoutes from './routes/paymentRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import financialRoutes from './routes/financialRoutes';
 import { setupSocket } from './socket';
+import tenantRoutes from './routes/tenantRoutes';
 // Start payment reminder cron job
 import './utils/paymentReminderJob';
 import './utils/subscriptionReminderJob';
@@ -47,6 +48,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/tenants', tenantRoutes);
 import { checkLandlordSubscription } from './middleware/landlordSubscriptionMiddleware';
 
 app.use('/api/payments', paymentRoutes);

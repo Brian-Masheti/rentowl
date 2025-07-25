@@ -9,6 +9,9 @@ export interface ITenant extends Document {
   passwordHash: string;
   isActive: boolean;
   deleted?: boolean;
+  landlord: mongoose.Types.ObjectId;
+  property?: mongoose.Types.ObjectId;
+  unitType?: string;
   // Add more tenant-specific fields as needed
 }
 
@@ -21,6 +24,9 @@ const TenantSchema = new Schema<ITenant>({
   passwordHash: { type: String, required: true },
   isActive: { type: Boolean, default: true },
   deleted: { type: Boolean, default: false },
+  landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
+  unitType: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<ITenant>('Tenant', TenantSchema);

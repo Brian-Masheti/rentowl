@@ -1,32 +1,101 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import LandlordSidebar from '../sidebars/LandlordSidebar';
 import MobileDashboardView from './MobileDashboardView';
-
-const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
-const PropertyList = lazy(() => import('../properties/PropertyList'));
+import TenantTable from '../tenants/TenantTable';
+import UserAssignmentPanel from '../shared/UserAssignmentPanel';
+import UnassignedTenantSelector from './UnassignedTenantSelector';
+import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
+import FinancialReport from '../financial/FinancialReport';
+import FilterBar from '../common/FilterBar';
+import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import {
   FaHome,
   FaBuilding,
   FaMoneyBillWave,
   FaFileInvoiceDollar,
-  FaUserTie,
-  FaClipboardCheck,
-  FaFileAlt,
   FaUsers,
   FaChartBar,
   FaBalanceScale
 } from 'react-icons/fa';
-import FinancialReport from '../financial/FinancialReport';
+
+const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
+const PropertyList = lazy(() => import('../properties/PropertyList'));
+
+type TenantTableRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  propertyName: string;
+  unitType?: string;
+  deleted?: boolean;
+  status?: string;
+};
+
+type PropertyType = {
+  id: string;
+  name: string;
+  units: any[];
+  tenants: any[];
+};
+
+const AddTenantSection: React.FC<{ properties: PropertyType[]; refresh: () => void }> = ({ properties, refresh }) => {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Handle tenant add/assign
+  const handleAddTenant = async (data: any) => {
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    console.log('Add Tenant payload:', data);
+    const res = await fetch(`${API_URL}/api/tenants`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...data.tenant, propertyId: data.propertyId }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('Add Tenant error:', errData);
+      throw new Error(errData.error || 'Failed to add tenant');
+    }
+    refresh();
+  };
+
+  return (
+    <>
+      <button
+        className="fixed bottom-8 right-8 z-50 bg-[#03A6A1] text-white font-bold py-4 px-6 rounded-full shadow-lg hover:bg-[#FFA673] transition text-lg"
+        style={{ minWidth: 160 }}
+        onClick={() => setModalOpen(true)}
+        disabled={properties.length === 0}
+      >
+        + Add Tenant
+      </button>
+      {properties.length === 0 && (
+        <div className="text-red-500 mt-2">No properties available. Please add a property first.</div>
+      )}
+      <AssignUserToPropertyModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleAddTenant}
+        mode="add"
+        userType="tenant"
+        properties={properties}
+        themeColor="#03A6A1"
+      />
+    </>
+  );
+};
 
 const menuItems = [
   { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
   { label: 'Properties', icon: <FaBuilding />, key: 'properties' },
   { label: 'Financial Reports', icon: <FaMoneyBillWave />, key: 'financial-reports' },
   { label: 'Tenant Statements', icon: <FaFileInvoiceDollar />, key: 'tenant-statements' },
-  { label: 'Caretaker Management', icon: <FaUserTie />, key: 'caretaker-management' },
-  { label: 'Caretaker Actions', icon: <FaClipboardCheck />, key: 'caretaker-actions' },
-  { label: 'Legal Documents', icon: <FaFileAlt />, key: 'legal-documents' },
-  { label: 'Tenant Check-in Docs', icon: <FaUsers />, key: 'tenant-checkin' },
+  { label: 'Add Tenant to Property', icon: <FaUsers />, key: 'add-tenant' },
   { label: 'Monthly Income', icon: <FaChartBar />, key: 'monthly-income' },
   { label: 'Occupancy vs. Vacancy', icon: <FaBalanceScale />, key: 'occupancy-vacancy' },
   { label: 'Rent Arrears', icon: <FaFileInvoiceDollar />, key: 'rent-arrears' },
@@ -37,25 +106,20 @@ const sectionTitles: Record<string, string> = {
   properties: 'Properties',
   'financial-reports': 'Financial Reports',
   'tenant-statements': 'Tenant Statements',
-  'caretaker-management': 'Caretaker Management',
-  'caretaker-actions': 'Caretaker Actions',
-  'legal-documents': 'Legal Documents',
-  'tenant-checkin': 'Tenant Check-in Docs',
+  'add-tenant': 'Add Tenant to Property',
   'monthly-income': 'Monthly Income',
   'occupancy-vacancy': 'Occupancy vs. Vacancy',
   'rent-arrears': 'Rent Arrears',
   profile: 'My Profile',
 };
 
-// --- PropertySection component for add button and form toggle ---
-// PropertyList is now lazy loaded above
-
+// PropertySection at top level
 const PropertySection: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
-  const [refreshToken, setRefreshToken] = useState(Date.now());
+  const [refreshTokenLocal, setRefreshTokenLocal] = useState(Date.now());
   const handleSuccess = () => {
     setShowForm(false);
-    setRefreshToken(Date.now()); // trigger PropertyList refresh
+    setRefreshTokenLocal(Date.now());
   };
   return (
     <div>
@@ -76,37 +140,177 @@ const PropertySection: React.FC = () => {
         </div>
       )}
       <Suspense fallback={<div className="text-center p-8">Loading properties...</div>}>
-        <PropertyList refreshToken={refreshToken} />
+        <PropertyList refreshToken={refreshTokenLocal} />
       </Suspense>
     </div>
   );
 };
 
-const sectionContent: Record<string, React.ReactNode> = {
-  dashboard: (
-    <>
-      <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
-        Welcome, Landlord! Here you can manage your properties, view financials, and more.
-      </p>
-    </>
-  ),
-  properties: (
-    <PropertySection />
-  ),
-  'financial-reports': <FinancialReport type="report" />,
-  'tenant-statements': <p>See tenant statements.</p>,
-  'caretaker-management': <p>Manage caretakers here.</p>,
-  'caretaker-actions': <p>View caretaker actions.</p>,
-  'legal-documents': <p>Access legal documents.</p>,
-  'tenant-checkin': <p>View tenant check-in documents.</p>,
-  'monthly-income': <FinancialReport type="monthly-income" />,
-  'occupancy-vacancy': <FinancialReport type="occupancy" />,
-  'rent-arrears': <FinancialReport type="arrears" />,
-  profile: <p>View and edit your profile information.</p>,
-};
-
 const LandlordDashboard: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState('dashboard');
+  const [properties, setProperties] = useState<PropertyType[]>([]);
+  const [tenants, setTenants] = useState<TenantTableRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [propertyFilter, setPropertyFilter] = useState('');
+  const [unitTypeFilter, setUnitTypeFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const token = localStorage.getItem('token');
+        // Properties
+        const propRes = await fetch(`${API_URL}/api/properties`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        let propData = await propRes.json();
+        let propertyArray = Array.isArray(propData) ? propData : propData.properties || [];
+        setProperties(
+          propertyArray.map((p: any) => ({
+            id: p._id,
+            name: p.name,
+            units: p.units || [],
+            tenants: p.tenants || [],
+            profilePic: p.profilePic,
+            profilePicThumb: p.profilePicThumb,
+            gallery: p.gallery,
+            galleryThumbs: p.galleryThumbs,
+          }))
+        );
+        // Tenants
+        const tenantRes = await fetch(`${API_URL}/api/tenants`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const tenantData = await tenantRes.json();
+        setTenants((tenantData.tenants || []).map((t: any) => ({
+          id: t._id,
+          firstName: t.firstName,
+          lastName: t.lastName,
+          email: t.email,
+          phone: t.phone,
+          propertyName: t.propertyName || (t.property && t.property.name) || '',
+          unitType: t.unitType || '',
+          deleted: t.deleted || false,
+          status: t.status || (t.deleted ? 'Deleted' : 'Active'),
+        })));
+      } catch (err) {
+        setProperties([]);
+        setTenants([]);
+        console.error('Failed to fetch properties or tenants:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [refreshToken]);
+
+  const refresh = () => setRefreshToken(t => t + 1);
+
+  // Filters
+  const propertyOptions = Array.from(new Set(properties.map(p => p.name)));
+  const unitTypeOptions = Array.from(new Set(properties.flatMap(p => p.units?.map((u: any) => u.type) || [])));
+  const statusOptions = ['All', 'Active', 'Deleted', 'Pending', 'Invited'];
+
+  let filteredTenants = tenants;
+  if (search) {
+    filteredTenants = filteredTenants.filter(t =>
+      (t.firstName + ' ' + t.lastName).toLowerCase().includes(search.toLowerCase()) ||
+      t.email.toLowerCase().includes(search.toLowerCase()) ||
+      t.phone.toLowerCase().includes(search.toLowerCase()) ||
+      t.propertyName.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+  if (statusFilter && statusFilter !== 'All') {
+    filteredTenants = filteredTenants.filter(t => t.status === statusFilter);
+  }
+  if (propertyFilter) {
+    filteredTenants = filteredTenants.filter(t => t.propertyName === propertyFilter);
+  }
+  if (unitTypeFilter) {
+    filteredTenants = filteredTenants.filter(t => t.unitType === unitTypeFilter);
+  }
+
+  // Bulk assign handler (fetches unassigned tenants)
+  const fetchUnassignedTenants = async () => {
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/tenants`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return (data.tenants || []).filter((t: any) => !t.property && !t.propertyId);
+  };
+  const handleBulkAssign = async (userIds: string[], propertyId: string, unitType: string) => {
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    await fetch(`${API_URL}/api/tenants/assign-bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userIds, propertyId, unitType }),
+    });
+    refresh();
+  };
+
+  const sectionContent: Record<string, React.ReactNode> = {
+    dashboard: (
+      <>
+        <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
+          Welcome, Landlord! Here you can manage your properties, view financials, and more.
+        </p>
+      </>
+    ),
+    properties: <PropertySection />, 
+    'financial-reports': <FinancialReport type="report" />, 
+    'tenant-statements': <p>See tenant statements.</p>,
+    'add-tenant': (
+      <>
+        <AddTenantSection properties={properties} refresh={refresh} />
+        {/* Main tenant table (all tenants) */}
+        <UserAssignmentPanel
+          userType="tenant"
+          properties={properties}
+          fetchUsers={async () => {
+            const API_URL = import.meta.env.VITE_API_URL || '';
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/api/tenants`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            return data.tenants || [];
+          }}
+          onAssign={handleBulkAssign}
+        />
+        {/* Table of tenants already linked to properties */}
+        <div className="mt-8">
+          <ResponsiveTableOrCards
+            columns={[
+              { key: 'firstName', label: 'First Name' },
+              { key: 'lastName', label: 'Last Name' },
+              { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'propertyName', label: 'Property' },
+              { key: 'unitType', label: 'Unit Type' },
+              { key: 'status', label: 'Status', render: (u) => u.status || 'Active' },
+            ]}
+            data={tenants.filter(t => t.propertyName)}
+            keyField="id"
+            cardTitle={u => `${u.firstName} ${u.lastName}`}
+          />
+        </div>
+      </>
+    ),
+    'monthly-income': <FinancialReport type="monthly-income" />, 
+    'occupancy-vacancy': <FinancialReport type="occupancy" />, 
+    'rent-arrears': <FinancialReport type="arrears" />, 
+    profile: <p>View and edit your profile information.</p>,
+  };
 
   return (
     <>

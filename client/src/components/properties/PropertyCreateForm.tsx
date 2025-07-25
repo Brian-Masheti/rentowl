@@ -76,21 +76,36 @@ const PropertyCreateForm: React.FC<PropertyCreateFormProps> = ({ onSuccess, onCl
     setError(null);
     setSuccess(false);
     setLoading(true);
+
+    // Validate required fields
+    if (!name.trim() || !address.trim()) {
+      setError('Property name and address are required.');
+      setLoading(false);
+      return;
+    }
+
+    // Validate units
+    const filteredUnits = units.filter(u => u.type && u.count && u.rent);
+    if (filteredUnits.length === 0) {
+      setError('Please specify at least one unit type with count and rent.');
+      setLoading(false);
+      return;
+    }
+    // Ensure all units have valid numbers
+    const unitsPayload = filteredUnits.map(u => ({
+      type: u.type,
+      count: Number(u.count),
+      rent: Number(u.rent),
+    }));
+    if (unitsPayload.some(u => !u.type || isNaN(u.count) || isNaN(u.rent) || u.count <= 0 || u.rent < 0)) {
+      setError('Each unit must have a type, a positive count, and a non-negative rent.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Validate units
-      const filteredUnits = units.filter(u => u.type && u.count && u.rent);
-      if (filteredUnits.length === 0) {
-        setError('Please specify at least one unit type with count and rent.');
-        setLoading(false);
-        return;
-      }
-      const unitsPayload = filteredUnits.map(u => ({
-        type: u.type,
-        count: Number(u.count),
-        rent: Number(u.rent),
-      }));
       const formData = new FormData();
-      formData.append('name', name);
+      formData.append('name', name); // <-- FIXED: use 'name' to match backend
       formData.append('address', address);
       formData.append('description', description);
       formData.append('units', JSON.stringify(unitsPayload));

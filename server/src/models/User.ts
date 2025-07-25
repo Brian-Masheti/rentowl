@@ -19,6 +19,8 @@ export interface IUser extends Document {
     relationship: string;
   };
   documents: string[];
+  property?: Types.ObjectId; // Reference to the property
+  unitType?: string; // e.g., "1 Bedroom", "2 Bedroom", etc.
   createdAt: Date;
   updatedAt: Date;
   // Landlord SaaS subscription fields

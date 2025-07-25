@@ -31,7 +31,8 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('tenant');
+  const [role, setRole] = useState('');
+  const [landlordCode, setLandlordCode] = useState('');
   const [phone, setPhone] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +86,16 @@ const Register: React.FC = () => {
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, username, email, password, role, phone }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          username,
+          email,
+          password,
+          role,
+          phone,
+          landlord: (role === 'tenant' || role === 'caretaker') ? landlordCode : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
@@ -225,7 +235,9 @@ const Register: React.FC = () => {
               style={{ background: 'transparent', color: '#03A6A1', borderRadius: '9999px' }}
               value={role}
               onChange={e => setRole(e.target.value)}
+              required
             >
+              <option value="" disabled style={{ textAlign: 'center' }}>------Please select your role------</option>
               <option value="tenant" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Tenant</option>
               <option value="caretaker" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Caretaker</option>
               <option value="landlord" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Landlord</option>
@@ -233,6 +245,19 @@ const Register: React.FC = () => {
             </select>
           </div>
         </div>
+        {(role === 'tenant' || role === 'caretaker') && (
+          <div>
+            <label className="block text-sm font-semibold text-[#03A6A1] mb-1">Landlord Invitation Code</label>
+            <input
+              type="text"
+              className="w-full px-4 py-2 rounded-full border border-gray-300 focus:border-[#03A6A1] focus:ring-2 focus:ring-[#03A6A1] focus:outline-none"
+              value={landlordCode}
+              onChange={e => setLandlordCode(e.target.value)}
+              required
+              placeholder="Please enter your landlord invitation code"
+            />
+          </div>
+        )}
         {error && <div className="text-[#FF4F0F] text-sm">{error}</div>}
         <button type="submit" className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition" disabled={loading}>
           {loading ? 'Registering...' : 'Register'}

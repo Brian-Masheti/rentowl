@@ -1,78 +1,97 @@
 import { Request, Response } from 'express';
 import Property from '../models/Property';
-import { Types } from 'mongoose';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
 
-// Create a new property (Landlord only, with image upload)
+// CREATE property
 export const createProperty = async (req: Request, res: Response) => {
   try {
-    let { name, address, caretaker, units, description } = req.body;
-    // Parse units if sent as JSON string (from FormData)
+    console.log('BODY:', req.body);
+    console.log('FILES:', req.files);
+    let { name, address, units, description } = req.body;
     if (typeof units === 'string') {
-      try {
-        units = JSON.parse(units);
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid units format.' });
-      }
+      units = JSON.parse(units);
+    }
+    if (!name || !address || !units) {
+      return res.status(400).json({ error: 'Name, address, and units are required.' });
     }
     const landlord = req.user?.id;
-    // Handle images
-    let profilePic: string | undefined = undefined;
-    let gallery: string[] = [];
-    if (req.files) {
-      // @ts-ignore
-      if (req.files.profilePic && req.files.profilePic[0]) {
-        // @ts-ignore
-        profilePic = req.files.profilePic[0].path.replace(/\\/g, '/');
-      }
-      // @ts-ignore
-      if (req.files.gallery) {
-        // @ts-ignore
-        gallery = req.files.gallery.map((file: Express.Multer.File) => file.path.replace(/\\/g, '/'));
+
+    // Handle file uploads and generate thumbnails
+    let profilePic, profilePicThumb, gallery = [], galleryThumbs = [];
+    const makeThumb = async (origPath: string) => {
+      const ext = path.extname(origPath);
+      const base = path.basename(origPath, ext);
+      const thumbDir = path.join(path.dirname(origPath), 'thumbs');
+      if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+      const thumbPath = path.join(thumbDir, `${base}_thumb${ext}`);
+      await sharp(origPath)
+        .resize(300, 300, { fit: 'inside' })
+        .toFile(thumbPath);
+      return thumbPath.replace(/\\/g, '/');
+    };
+    if (req.files && (req.files as any).profilePic) {
+      profilePic = (req.files as any).profilePic[0].path.replace(/\\/g, '/');
+      profilePicThumb = await makeThumb((req.files as any).profilePic[0].path);
+      console.log('PROFILE PIC:', profilePic);
+      console.log('PROFILE PIC THUMB:', profilePicThumb);
+    }
+    if (req.files && (req.files as any).gallery) {
+      gallery = (req.files as any).gallery.map((file: any) => file.path.replace(/\\/g, '/'));
+      for (const file of (req.files as any).gallery) {
+        const thumb = await makeThumb(file.path);
+        galleryThumbs.push(thumb);
+        console.log('GALLERY IMAGE:', file.path.replace(/\\/g, '/'));
+        console.log('GALLERY THUMB:', thumb);
       }
     }
-    // Validate units array
-    if (!Array.isArray(units) || units.length === 0) {
-      return res.status(400).json({ error: 'Units array is required and must have at least one unit type.' });
-    }
-    for (const unit of units) {
-      if (!unit.type || typeof unit.type !== 'string' || typeof unit.count !== 'number' || typeof unit.rent !== 'number') {
-        return res.status(400).json({ error: 'Each unit must have a type (string), count (number), and rent (number).' });
-      }
-    }
+
     const property = await Property.create({
       name,
       address,
       landlord,
-      caretaker: caretaker || null,
-      tenants: [],
       units,
       description,
+      tenants: [],
       profilePic,
+      profilePicThumb,
       gallery,
+      galleryThumbs,
     });
     res.status(201).json(property);
   } catch (err) {
-    console.error('Error in createProperty:', err);
-    res.status(500).json({ error: 'Failed to create property.' });
+    console.error('CREATE PROPERTY ERROR:', err);
+    res.status(500).json({ error: 'Failed to create property.', details: err instanceof Error ? err.message : err });
   }
 };
 
-// Get all properties for a landlord (excluding soft-deleted)
+// GET all properties for landlord (with populated tenants)
 export const getLandlordProperties = async (req: Request, res: Response) => {
   try {
     const landlord = req.user?.id;
-    const properties = await Property.find({ landlord, isDeleted: { $ne: true } }).populate('caretaker tenants');
+    const properties = await Property.find({ landlord, isDeleted: { $ne: true } })
+      .populate({
+        path: 'tenants.tenant',
+        model: 'Tenant',
+        select: 'firstName lastName email phone',
+      });
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch properties.' });
   }
 };
 
-// Get a single property (by ID)
+// GET property by ID (with populated tenants)
 export const getPropertyById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const property = await Property.findById(id).populate('caretaker tenants');
+    const property = await Property.findById(id)
+      .populate({
+        path: 'tenants.tenant',
+        model: 'Tenant',
+        select: 'firstName lastName email phone',
+      });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     res.json(property);
   } catch (err) {
@@ -80,64 +99,25 @@ export const getPropertyById = async (req: Request, res: Response) => {
   }
 };
 
-// Update a property (Landlord only, with image upload support)
+// UPDATE property
 export const updateProperty = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    // Best practice: explicitly set updatable fields
-    const updates: any = {};
-    if (typeof req.body.name === 'string') updates.name = req.body.name;
-    if (typeof req.body.address === 'string') updates.address = req.body.address;
-    // Parse units for update as well
-    let updateUnits = req.body.units;
-    if (typeof updateUnits === 'string') {
-      try {
-        updateUnits = JSON.parse(updateUnits);
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid units format.' });
-      }
-    }
-    if (Array.isArray(updateUnits)) updates.units = updateUnits;
-    if (typeof req.body.description === 'string') updates.description = req.body.description;
-    if (typeof req.body.caretaker === 'string') updates.caretaker = req.body.caretaker;
-
-    // Handle images
-    if (req.files) {
-      // @ts-ignore
-      if (req.files.profilePic && req.files.profilePic[0]) {
-        // @ts-ignore
-        updates.profilePic = req.files.profilePic[0].path.replace(/\\/g, '/');
-      }
-      // @ts-ignore
-      if (req.files.gallery) {
-        // @ts-ignore
-        updates.gallery = req.files.gallery.map((file: Express.Multer.File) => file.path.replace(/\\/g, '/'));
-      }
-    }
-
-    // Handle removal of profilePic or gallery images if requested
-    if (req.body.removeProfilePic === 'true') {
-      updates.profilePic = undefined;
-    }
-    if (req.body.removeGalleryIndexes) {
-      // removeGalleryIndexes should be a comma-separated string of indexes to remove
-      const indexes = req.body.removeGalleryIndexes.split(',').map((i: string) => parseInt(i, 10));
-      const property = await Property.findById(id);
-      if (property && property.gallery) {
-        updates.gallery = property.gallery.filter((_: any, idx: number) => !indexes.includes(idx));
-      }
-    }
-
-    const property = await Property.findByIdAndUpdate(id, updates, { new: true });
+    const updates = req.body;
+    const property = await Property.findByIdAndUpdate(id, updates, { new: true })
+      .populate({
+        path: 'tenants.tenant',
+        model: 'Tenant',
+        select: 'firstName lastName email phone',
+      });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     res.json(property);
   } catch (err) {
-    console.error('Error in updateProperty:', err);
     res.status(500).json({ error: 'Failed to update property.' });
   }
 };
 
-// Soft delete a property (Landlord only)
+// DELETE property (soft delete)
 export const deleteProperty = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -146,5 +126,25 @@ export const deleteProperty = async (req: Request, res: Response) => {
     res.json({ message: 'Property soft deleted.' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete property.' });
+  }
+};
+
+// REMOVE tenant from property
+export const removeTenantFromProperty = async (req: Request, res: Response) => {
+  try {
+    const { propertyId, tenantId } = req.params;
+    const updated = await Property.findByIdAndUpdate(
+      propertyId,
+      { $pull: { tenants: { tenant: tenantId } } },
+      { new: true }
+    ).populate({
+      path: 'tenants.tenant',
+      model: 'Tenant',
+      select: 'firstName lastName email phone',
+    });
+    if (!updated) return res.status(404).json({ error: 'Property not found.' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to remove tenant from property.' });
   }
 };
