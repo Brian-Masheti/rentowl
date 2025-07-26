@@ -454,6 +454,7 @@ import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
 import FinancialReport from '../financial/FinancialReport';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import CaretakerManagement from '../caretakers/CaretakerManagement';
+import CaretakerActions from '../caretakers/actions/CaretakerActions';
 import {
   FaHome,
   FaBuilding,
@@ -726,7 +727,7 @@ function LandlordDashboard() {
     ),
     'assign-caretaker': <AssignCaretakerToPropertySection properties={properties} refresh={refresh} />,
     'caretaker-management': <CaretakerManagement />,
-    'caretaker-actions': <p>View caretaker actions here.</p>,
+    'caretaker-actions': <CaretakerActions />,
     'legal-documents': <p>View legal documents here.</p>,
     'tenant-checkin': <p>View tenant check-in documents here.</p>,
     'monthly-income': <FinancialReport type="monthly-income" />, 
