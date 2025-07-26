@@ -18,6 +18,16 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 
 ---
 
+## 🌟 Highlighted Features
+
+### Advanced Assign Caretaker to Property Menu
+- Assign caretakers to properties with a modern, interactive table
+- View caretaker contact info, workload, and status directly in the menu
+- Filter, sort, and search properties and caretakers
+- Bulk assign a caretaker to multiple properties at once
+- Quick view caretaker profile modal for more details
+- Accessible and responsive UI for all devices
+
 ## ✨ Features
 
 ### Landlord Capabilities
@@ -25,7 +35,12 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 - View all properties in diagram format
 - Access financial reports and rent summaries
 - Generate tenant statements
-- Assign caretaker duties to properties
+- Assign caretaker duties to properties with:
+  - Caretaker contact info, workload, and status display
+  - Filtering, sorting, and search for properties/caretakers
+  - Bulk assignment to multiple properties
+  - Caretaker profile quick view modal
+  - Improved table presentation and accessibility
 - Monitor caretaker actions on tenant requests
 - Access legal documents and agreements
 - View tenant check-in documentation
