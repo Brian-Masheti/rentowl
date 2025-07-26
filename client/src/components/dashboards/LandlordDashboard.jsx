@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import LandlordSidebar from '../sidebars/LandlordSidebar';
 
@@ -208,7 +209,7 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
                     return (
                       <div className="flex flex-col gap-1">
                         <span className="font-semibold text-[#03A6A1] flex items-center gap-2">
-                          <span className="inline-block w-7 h-7 rounded-full bg-[#FFA673]/30 text-[#FFA673] font-bold flex items-center justify-center text-sm mr-1">
+                          <span className="w-7 h-7 rounded-full bg-[#FFA673]/30 text-[#FFA673] font-bold flex items-center justify-center text-sm mr-1">
                             {c.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                           </span>
                           {c.name}
@@ -226,7 +227,7 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
                         <span className="flex items-center gap-1 text-gray-700 text-sm">
                           <span role="img" aria-label="Email">✉️</span> <span>{c.email}</span>
                         </span>
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mt-1 ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{c.isActive ? 'Active' : 'Inactive'}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold mt-1 ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{c.isActive ? 'Active' : 'Inactive'}</span>
                       </div>
                     );
                   })()}
@@ -309,6 +310,7 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
                     setBulkCaretaker('');
                     if (refresh) refresh();
                   } catch (err) {
+                    console.log(err);
                     setAssigning(null);
                     setShowBulkModal(false);
                     alert('Error in bulk assignment.');
@@ -331,13 +333,13 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
               <>
                 <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">Caretaker Profile</h2>
                 <div className="flex flex-col items-center gap-2 mb-4">
-                  <span className="inline-block w-16 h-16 rounded-full bg-[#FFA673]/30 text-[#FFA673] font-bold flex items-center justify-center text-2xl">
+                  <span className="w-16 h-16 rounded-full bg-[#FFA673]/30 text-[#FFA673] font-bold flex items-center justify-center text-2xl">
                     {modalInfo.caretaker?.name?.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </span>
                   <span className="font-bold text-lg text-[#03A6A1]">{modalInfo.caretaker?.name}</span>
                   <span className="text-gray-700">{modalInfo.caretaker?.email}</span>
                   <span className="text-gray-700">{modalInfo.caretaker?.phone}</span>
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mt-1 ${modalInfo.caretaker?.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{modalInfo.caretaker?.isActive ? 'Active' : 'Inactive'}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold mt-1 ${modalInfo.caretaker?.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{modalInfo.caretaker?.isActive ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div className="mb-2">
                   <span className="font-semibold text-[#FFA673]">Assignment History:</span>
