@@ -129,6 +129,27 @@ You can find screenshots in the `client/public/images/` folder:
 
 ---
 
+## 🧪 Testing (Frontend)
+
+- All frontend tests are located in `client/tests/`.
+- Uses [Vitest](https://vitest.dev/) and [Testing Library](https://testing-library.com/) for React component testing.
+
+### Run all tests
+
+```bash
+cd client
+pnpm test
+```
+
+### Run tests with coverage
+
+```bash
+cd client
+pnpm test:coverage
+```
+
+- Coverage reports are output to `client/coverage/` and are gitignored.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
