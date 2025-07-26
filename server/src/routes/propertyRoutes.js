@@ -6,6 +6,7 @@ const {
   updateProperty,
   deleteProperty,
   removeTenantFromProperty,
+  assignCaretakerToProperty
 } = require('../controllers/propertyController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
 const { upload } = require('../middleware/uploadMiddleware');
@@ -24,6 +25,10 @@ router.post(
   createProperty
 );
 router.get('/', requireAuth, requireRole(['landlord']), getLandlordProperties);
+
+// Assign caretaker to property (must be before any /:id route)
+router.put('/:id/assign-caretaker', requireAuth, requireRole(['landlord']), assignCaretakerToProperty);
+
 router.get('/:id', requireAuth, requireRole(['landlord', 'caretaker', 'tenant']), getPropertyById);
 
 router.put(

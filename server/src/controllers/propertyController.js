@@ -63,6 +63,7 @@ const getLandlordProperties = async (req, res) => {
   try {
     const landlord = req.user && req.user.id;
     const properties = await Property.find({ landlord, isDeleted: { $ne: true } })
+      .populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' })
       .populate({
         path: 'tenants.tenant',
         model: 'Tenant',
@@ -79,6 +80,7 @@ const getPropertyById = async (req, res) => {
   try {
     const { id } = req.params;
     const property = await Property.findById(id)
+      .populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' })
       .populate({
         path: 'tenants.tenant',
         model: 'Tenant',
@@ -141,11 +143,36 @@ const removeTenantFromProperty = async (req, res) => {
   }
 };
 
+// Assign caretaker to property
+const Caretaker = require('../models/Caretaker');
+const assignCaretakerToProperty = async (req, res) => {
+  console.log('assignCaretakerToProperty called', req.params, req.body);
+  try {
+    const { id } = req.params; // propertyId
+    const { caretakerId } = req.body;
+    const caretaker = await Caretaker.findOne({ _id: caretakerId, isActive: true });
+    if (!caretaker && caretakerId) return res.status(404).json({ error: 'Caretaker not found or inactive.' });
+    // If caretakerId is null, unassign
+    const update = caretakerId ? { caretaker: caretakerId } : { $unset: { caretaker: 1 } };
+    const property = await Property.findByIdAndUpdate(
+      id,
+      update,
+      { new: true }
+    ).populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' });
+    if (!property) return res.status(404).json({ error: 'Property not found.' });
+    res.json({ property });
+  } catch (err) {
+    console.error('assignCaretakerToProperty error:', err);
+    res.status(500).json({ error: 'Failed to assign caretaker.' });
+  }
+};
+
 module.exports = {
   createProperty,
   getLandlordProperties,
   getPropertyById,
   updateProperty,
   deleteProperty,
-  removeTenantFromProperty
+  removeTenantFromProperty,
+  assignCaretakerToProperty
 };
