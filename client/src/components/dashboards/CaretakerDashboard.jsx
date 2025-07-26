@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CaretakerSidebar from '../sidebars/CaretakerSidebar';
 import MobileDashboardView from './MobileDashboardView';
 import { caretakerMenu } from './dashboardConfig.jsx';
+import StickyNavBar from '../shared/StickyNavBar.jsx';
 
 const sectionTitles = {
   dashboard: 'Caretaker Dashboard',
@@ -38,14 +39,46 @@ const sectionContent = {
 };
 
 const CaretakerDashboard = () => {
-  const [selectedSection, setSelectedSection] = useState('dashboard');
+  // On mount, try to load last selected section from localStorage
+  const getInitialSection = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('caretakerSelectedSection');
+      if (saved) return saved;
+    }
+    return 'dashboard';
+  };
+  const [selectedSection, setSelectedSection] = useState(getInitialSection());
+
+  // Save selected section to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('caretakerSelectedSection', selectedSection);
+    }
+    // Scroll to top on section change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedSection]);
+
+  // Redirect to landing page if not authenticated (check both token and user)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      if (!token || !user) {
+        window.location.href = '/';
+      }
+    }
+  }, []);
+
+  // Find the selected menu item for sticky nav
+  const selectedMenuItem = caretakerMenu.find(item => item.key === selectedSection) || { label: sectionTitles[selectedSection] || 'Caretaker Dashboard' };
 
   try {
     return (
       <>
+        {/* Mobile View */}
         <div className="block md:hidden">
           <MobileDashboardView
-            menuItems={menuItems}
+            menuItems={caretakerMenu}
             sectionTitles={sectionTitles}
             sectionContent={sectionContent}
             dashboardLabel="Caretaker Dashboard"
@@ -53,10 +86,11 @@ const CaretakerDashboard = () => {
             setSelectedSection={setSelectedSection}
           />
         </div>
+        {/* Desktop/Tablet View */}
         <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
           <CaretakerSidebar onSelect={setSelectedSection} selected={selectedSection} />
           <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
-            <h1 style={{ color: '#03A6A1', fontWeight: 700, fontSize: 32 }}>{sectionTitles[selectedSection] || 'Caretaker Dashboard'}</h1>
+            <StickyNavBar label={selectedMenuItem.label} icon={selectedMenuItem.icon} />
             <div style={{ marginTop: 16 }}>
               {sectionContent[selectedSection] || <div style={{ color: '#03A6A1', fontWeight: 600, fontSize: 22, background: '#FFF', padding: '24px', borderRadius: 8, border: '2px solid #03A6A1' }}>Coming soon: {sectionTitles[selectedSection] || 'This section'}</div>}
             </div>

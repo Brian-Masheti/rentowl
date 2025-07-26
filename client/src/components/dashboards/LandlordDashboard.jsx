@@ -69,6 +69,7 @@ const AddTenantSection = ({ properties, refresh }) => {
 };
 
 import { landlordMenu } from './dashboardConfig';
+import StickyNavBar from '../shared/StickyNavBar.jsx';
 
 const sectionTitles = {
   dashboard: 'Landlord Dashboard',
@@ -76,6 +77,11 @@ const sectionTitles = {
   'financial-reports': 'Financial Reports',
   'tenant-statements': 'Tenant Statements',
   'add-tenant': 'Add Tenant to Property',
+  'assign-caretaker': 'Assign Caretaker to Property',
+  'caretaker-management': 'Caretaker Management',
+  'caretaker-actions': 'Caretaker Actions',
+  'legal-documents': 'Legal Documents',
+  'tenant-checkin': 'Tenant Check-in Docs',
   'monthly-income': 'Monthly Income',
   'occupancy-vacancy': 'Occupancy vs. Vacancy',
   'rent-arrears': 'Rent Arrears',
@@ -115,19 +121,41 @@ const PropertySection = () => {
 };
 
 function LandlordDashboard() {
-  const [selectedSection, setSelectedSection] = useState('dashboard');
+  // On mount, try to load last selected section from localStorage
+  const getInitialSection = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('landlordSelectedSection');
+      if (saved) return saved;
+    }
+    return 'dashboard';
+  };
+  const [selectedSection, setSelectedSection] = useState(getInitialSection());
   const [properties, setProperties] = useState([]);
   const [tenants, setTenants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [propertyFilter, setPropertyFilter] = useState('');
-  const [unitTypeFilter, setUnitTypeFilter] = useState('');
-  const [search, setSearch] = useState('');
   const [refreshToken, setRefreshToken] = useState(0);
+
+  // Save selected section to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('landlordSelectedSection', selectedSection);
+    }
+    // Scroll to top on section change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedSection]);
+
+  // Redirect to landing page if not authenticated
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // setLoading(true); (removed, not used)
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
         const token = localStorage.getItem('token');
@@ -170,7 +198,7 @@ function LandlordDashboard() {
         setTenants([]);
         console.error('Failed to fetch properties or tenants:', err);
       } finally {
-        setLoading(false);
+        // setLoading(false); (removed, not used)
       }
     };
     fetchData();
@@ -179,39 +207,11 @@ function LandlordDashboard() {
   const refresh = () => setRefreshToken(t => t + 1);
 
   // Filters
-  const propertyOptions = Array.from(new Set(properties.map(p => p.name)));
-  const unitTypeOptions = Array.from(new Set(properties.flatMap(p => p.units?.map((u) => u.type) || [])));
-  const statusOptions = ['All', 'Active', 'Deleted', 'Pending', 'Invited'];
+  // (propertyOptions, unitTypeOptions, statusOptions removed as they are not used)
 
-  let filteredTenants = tenants;
-  if (search) {
-    filteredTenants = filteredTenants.filter(t =>
-      (t.firstName + ' ' + t.lastName).toLowerCase().includes(search.toLowerCase()) ||
-      t.email.toLowerCase().includes(search.toLowerCase()) ||
-      t.phone.toLowerCase().includes(search.toLowerCase()) ||
-      t.propertyName.toLowerCase().includes(search.toLowerCase())
-    );
-  }
-  if (statusFilter && statusFilter !== 'All') {
-    filteredTenants = filteredTenants.filter(t => t.status === statusFilter);
-  }
-  if (propertyFilter) {
-    filteredTenants = filteredTenants.filter(t => t.propertyName === propertyFilter);
-  }
-  if (unitTypeFilter) {
-    filteredTenants = filteredTenants.filter(t => t.unitType === unitTypeFilter);
-  }
+  // (filteredTenants and related filters removed as they are not used)
 
-  // Bulk assign handler (fetches unassigned tenants)
-  const fetchUnassignedTenants = async () => {
-    const API_URL = import.meta.env.VITE_API_URL || '';
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/tenants`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    return (data.tenants || []).filter((t) => !t.property && !t.propertyId);
-  };
+  // (fetchUnassignedTenants removed as it is not used)
   const handleBulkAssign = async (userIds, propertyId, unitType) => {
     const API_URL = import.meta.env.VITE_API_URL || '';
     const token = localStorage.getItem('token');
@@ -274,6 +274,11 @@ function LandlordDashboard() {
         </div>
       </>
     ),
+    'assign-caretaker': <p>Assign a caretaker to a property here.</p>,
+    'caretaker-management': <p>Manage caretakers here.</p>,
+    'caretaker-actions': <p>View caretaker actions here.</p>,
+    'legal-documents': <p>View legal documents here.</p>,
+    'tenant-checkin': <p>View tenant check-in documents here.</p>,
     'monthly-income': <FinancialReport type="monthly-income" />, 
     'occupancy-vacancy': <FinancialReport type="occupancy" />, 
     'rent-arrears': <FinancialReport type="arrears" />, 
@@ -295,7 +300,11 @@ function LandlordDashboard() {
       <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
         <LandlordSidebar onSelect={setSelectedSection} selected={selectedSection} />
         <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
-          <h1 style={{ color: '#03A6A1', fontWeight: 700, fontSize: 32 }}>{sectionTitles[selectedSection] || 'Landlord Dashboard'}</h1>
+          {/* Sticky nav bar for desktop/tablet */}
+          <StickyNavBar
+            label={(landlordMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Landlord Dashboard')}
+            icon={landlordMenu.find(item => item.key === selectedSection)?.icon}
+          />
           <div style={{ marginTop: 16 }}>
             {sectionContent[selectedSection] || <div style={{ color: '#03A6A1', fontWeight: 600, fontSize: 22, background: '#FFF', padding: '24px', borderRadius: 8, border: '2px solid #03A6A1' }}>Coming soon: {sectionTitles[selectedSection] || 'This section'}</div>}
           </div>

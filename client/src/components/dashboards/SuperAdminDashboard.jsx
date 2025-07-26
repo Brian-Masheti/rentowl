@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fa';
 
 import { superAdminMenu } from './dashboardConfig';
+import StickyNavBar from '../shared/StickyNavBar.jsx';
 
 const sectionTitles = {
   dashboard: 'Super Admin Dashboard',
@@ -56,7 +57,34 @@ const sectionContent = {
 };
 
 const SuperAdminDashboard = () => {
-  const [selectedSection, setSelectedSection] = useState('dashboard');
+  // On mount, try to load last selected section from localStorage
+  const getInitialSection = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('superAdminSelectedSection');
+      if (saved) return saved;
+    }
+    return 'dashboard';
+  };
+  const [selectedSection, setSelectedSection] = useState(getInitialSection());
+
+  // Save selected section to localStorage whenever it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('superAdminSelectedSection', selectedSection);
+    }
+    // Scroll to top on section change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedSection]);
+
+  // Redirect to landing page if not authenticated
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+      }
+    }
+  }, []);
 
   try {
     return (
@@ -75,7 +103,10 @@ const SuperAdminDashboard = () => {
         <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
           <SuperAdminSidebar onSelect={setSelectedSection} selected={selectedSection} />
           <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
-            <h1 style={{ color: '#03A6A1', fontWeight: 700, fontSize: 32 }}>{sectionTitles[selectedSection] || 'Super Admin Dashboard'}</h1>
+            <StickyNavBar
+              label={(superAdminMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Super Admin Dashboard')}
+              icon={superAdminMenu.find(item => item.key === selectedSection)?.icon}
+            />
             <div style={{ marginTop: 16 }}>
               {sectionContent[selectedSection] || <div style={{ color: '#03A6A1', fontWeight: 600, fontSize: 22, background: '#FFF', padding: '24px', borderRadius: 8, border: '2px solid #03A6A1' }}>Coming soon: {sectionTitles[selectedSection] || 'This section'}</div>}
             </div>

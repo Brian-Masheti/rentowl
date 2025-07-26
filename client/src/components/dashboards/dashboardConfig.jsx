@@ -63,13 +63,14 @@ export const superAdminMenu = [
 ];
 
 export const tenantMenu = [
-  { label: 'Dashboard', icon: <FaHome /> },
-  { label: 'Housing Agreement', icon: <FaFileAlt /> },
-  { label: 'Rent Payment History', icon: <FaMoneyBillWave /> },
-  { label: 'Make Payment', icon: <FaCreditCard /> },
-  { label: 'Receipts', icon: <FaReceipt /> },
-  { label: 'Maintenance Requests', icon: <FaTools /> },
-  { label: 'Announcements', icon: <FaComments /> },
-  { label: 'Reminders', icon: <FaBell /> },
-  { label: 'Late Penalties', icon: <FaExclamationTriangle /> }
+  { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
+  { label: 'Housing Agreement', icon: <FaFileAlt />, key: 'housing-agreement' },
+  { label: 'Rent Payment History', icon: <FaMoneyBillWave />, key: 'rent-payment-history' },
+  { label: 'Payment Status', icon: <FaMoneyCheckAlt />, key: 'payment-status' },
+  { label: 'Make Payment', icon: <FaCreditCard />, key: 'make-payment' },
+  { label: 'Receipts', icon: <FaReceipt />, key: 'receipts' },
+  { label: 'Maintenance Requests', icon: <FaTools />, key: 'maintenance-requests' },
+  { label: 'Announcements', icon: <FaComments />, key: 'announcements' },
+  { label: 'Reminders', icon: <FaBell />, key: 'reminders' },
+  { label: 'Late Penalties', icon: <FaExclamationTriangle />, key: 'late-penalties' }
 ];

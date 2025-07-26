@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaBars, FaTimes, FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
+import StickyNavBar from '../shared/StickyNavBar.jsx';
 
 const MobileDashboardView = ({
   menuItems = [],
@@ -27,15 +28,20 @@ const MobileDashboardView = ({
 
     return (
       <div style={{ minHeight: '100vh', background: '#FFE3BB', position: 'relative' }}>
-        {/* Hamburger menu */}
-        <button
-          className="fixed top-4 left-4 z-50 bg-[#03A6A1] p-2 rounded-full text-white shadow-lg focus:outline-none"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open sidebar"
-          style={{ position: 'fixed', top: 16, left: 16, zIndex: 50 }}
-        >
-          <FaBars size={22} />
-        </button>
+        {/* Sticky header with hamburger and section label */}
+        <StickyNavBar
+          label={sectionTitles[selectedSection] || dashboardLabel}
+          icon={
+            <button
+              className="mr-2 bg-[#03A6A1] p-2 rounded-full text-white shadow-lg focus:outline-none"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open sidebar"
+              style={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              <FaBars size={22} />
+            </button>
+          }
+        />
 
         {/* Sidebar drawer */}
         {sidebarOpen && (
@@ -105,23 +111,7 @@ const MobileDashboardView = ({
         {/* Main content synced with desktop */}
         <main style={{ padding: 16, background: '#FFF8F0', minHeight: '100vh', width: '100%' }}>
           <div style={{ maxWidth: 600, margin: '0 auto' }}>
-            <h1
-              style={{
-                color: '#03A6A1',
-                fontWeight: 700,
-                fontSize: 28,
-                marginBottom: 16,
-                background: '#FFF',
-                padding: '12px 24px',
-                borderRadius: 8,
-                border: '2px solid #03A6A1',
-                textAlign: 'center',
-                marginTop: 'clamp(56px, 7vw, 72px)',
-              }}
-            >
-              {sectionTitles[selectedSection] || dashboardLabel}
-            </h1>
-            <div style={{ color: '#23272F', fontSize: 16, background: '#FFF', padding: '12px 24px', borderRadius: 8, border: '2px solid #FFA673', minHeight: 120 }}>
+                        <div style={{ color: '#23272F', fontSize: 16, background: '#FFF', padding: '12px 24px', borderRadius: 8, border: '2px solid #FFA673', minHeight: 120 }}>
               {sectionContent[selectedSection] || <p>Section coming soon.</p>}
             </div>
           </div>

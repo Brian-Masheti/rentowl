@@ -16,7 +16,7 @@ import {
 const items = [
   { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
   { label: 'Housing Agreement', icon: <FaFileAlt />, key: 'housing-agreement' },
-  { label: 'Rent Payment History', icon: <FaMoneyBillWave />, key: 'rent-history' },
+  { label: 'Rent Payment History', icon: <FaMoneyBillWave />, key: 'rent-payment-history' },
   { label: 'Make Payment', icon: <FaCreditCard />, key: 'make-payment' },
   { label: 'Payment Status', icon: <FaBell />, key: 'payment-status' },
   { label: 'Receipts', icon: <FaReceipt />, key: 'receipts' },
