@@ -59,7 +59,6 @@ const FinancialReport = ({ type }) => {
   if (type === 'report' && data && data.summary && data.perProperty) {
     return (
       <div className="bg-white rounded-lg shadow p-6 min-h-[200px]">
-        <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">{TITLES[type]}</h2>
         {/* Mobile Filters */}
         <FinancialMobileFilters
           dateRange={dateRange}
@@ -368,7 +367,6 @@ const FinancialReport = ({ type }) => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6 min-h-[200px]">
-      <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">{TITLES[type]}</h2>
       {!loading && !error && data && (
         <pre className="text-xs text-gray-700 bg-gray-50 rounded p-2 overflow-x-auto">{JSON.stringify(data, null, 2)}</pre>
       )}

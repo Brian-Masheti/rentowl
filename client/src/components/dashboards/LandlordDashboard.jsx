@@ -105,8 +105,7 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">Assign Caretaker to Property</h2>
-      <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
         <input
           type="text"
           placeholder="Search properties..."
@@ -454,6 +453,7 @@ import UserAssignmentPanel from '../shared/UserAssignmentPanel';
 import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
 import FinancialReport from '../financial/FinancialReport';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
+import CaretakerManagement from '../caretakers/CaretakerManagement';
 import {
   FaHome,
   FaBuilding,
@@ -726,7 +726,7 @@ function LandlordDashboard() {
       </>
     ),
     'assign-caretaker': <AssignCaretakerToPropertySection properties={properties} refresh={refresh} />,
-    'caretaker-management': <p>Manage caretakers here.</p>,
+    'caretaker-management': <CaretakerManagement />,
     'caretaker-actions': <p>View caretaker actions here.</p>,
     'legal-documents': <p>View legal documents here.</p>,
     'tenant-checkin': <p>View tenant check-in documents here.</p>,
