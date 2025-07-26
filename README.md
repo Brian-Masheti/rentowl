@@ -20,6 +20,15 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 
 ## 🌟 Highlighted Features
 
+### Caretaker Actions (Landlord Dashboard)
+- View a real-time activity log of all caretaker actions across properties
+- Filter, search, and export caretaker actions (CSV)
+- See action details: who did what, when, and where (property)
+- Automated logging for maintenance resolutions and other key events
+- Real-time updates via Socket.io—no refresh needed
+- Rate limiting for API protection
+- Fully documented API (see Swagger docs at `/api/docs`)
+
 ### Advanced Assign Caretaker to Property Menu
 - Assign caretakers to properties with a modern, interactive table
 - View caretaker contact info, workload, and status directly in the menu
@@ -129,8 +138,18 @@ You can find screenshots in the `client/public/images/` folder:
 
 ---
 
-## 🧪 Testing (Frontend)
+## 🧪 Testing
 
+### Backend API Tests
+- Basic Jest/Supertest tests for caretaker actions API are located in `server/tests/caretakerAction.test.js`.
+- To run backend tests:
+
+```bash
+cd server
+pnpm test
+```
+
+### Frontend
 - All frontend tests are located in `client/tests/`.
 - Uses [Vitest](https://vitest.dev/) and [Testing Library](https://testing-library.com/) for React component testing.
 
@@ -182,6 +201,10 @@ cd ../server && pnpm run build
 
 ## 📢 Notes
 
+- The backend API now supports real-time caretaker action logging, filtering, and export.
+- Rate limiting is enabled for all caretaker actions endpoints (60 requests per 15 minutes per IP).
+- Automated logging is implemented for maintenance resolutions.
+- API documentation is available at `/api/docs` (Swagger UI).
 - The backend API is fully functional and tested with Postman.
 - The frontend is under active development; some features and UI may change.
 - For demo images, see the `client/public/images/` folder.
