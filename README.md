@@ -21,13 +21,21 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 ## 🌟 Highlighted Features
 
 ### Caretaker Actions (Landlord Dashboard)
-- View a real-time activity log of all caretaker actions across properties
-- Filter, search, and export caretaker actions (CSV)
-- See action details: who did what, when, and where (property)
+- Real-time caretaker activity log with instant updates via Socket.io
+- Filter actions by caretaker, property, type, status, date, and description
+- View full action details in a modal
+- Export filtered actions as CSV
+- See summary stats for quick insights
 - Automated logging for maintenance resolutions and other key events
-- Real-time updates via Socket.io—no refresh needed
 - Rate limiting for API protection
 - Fully documented API (see Swagger docs at `/api/docs`)
+
+#### Real-Time & Environment Setup
+- The dashboard uses Socket.io for real-time updates.
+- Configure your `.env` files:
+  - `VITE_API_URL` for local backend (e.g., http://localhost:5000)
+  - `VITE_API_URL_NETWORK` for LAN backend (e.g., http://192.168.x.x:5000)
+- The frontend will automatically use the correct backend based on these variables.
 
 ### Advanced Assign Caretaker to Property Menu
 - Assign caretakers to properties with a modern, interactive table
