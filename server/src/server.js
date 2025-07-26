@@ -12,6 +12,7 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const financialRoutes = require('./routes/financialRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const caretakerRoutes = require('./routes/caretakerRoutes');
+const caretakerActionRoutes = require('./routes/caretakerActionRoutes');
 const { setupSocket } = require('./socket');
 const { checkLandlordSubscription } = require('./middleware/landlordSubscriptionMiddleware');
 const errorHandler = require('./middleware/errorHandler');
@@ -51,6 +52,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/financial', financialRoutes);
 app.use('/api/caretakers', caretakerRoutes);
+app.use('/api/caretaker-actions', caretakerActionRoutes);
 
 // Block expired landlords for all protected landlord routes
 app.use('/api/properties', checkLandlordSubscription);
@@ -66,7 +68,8 @@ app.get('/', (req, res) => {
 // Centralized error handler
 app.use(errorHandler);
 
-setupSocket(server);
+const io = setupSocket(server);
+app.set('io', io);
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

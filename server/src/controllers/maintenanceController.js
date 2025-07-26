@@ -66,6 +66,17 @@ const updateRequestStatus = async (req, res) => {
     }
     const request = await MaintenanceRequest.findByIdAndUpdate(id, update, { new: true });
     if (!request) return res.status(404).json({ error: 'Request not found.' });
+    // Automated logging: if resolved, log caretaker action
+    if (status === 'resolved' && request.caretaker) {
+      const logCaretakerAction = require('../utils/logCaretakerAction');
+      await logCaretakerAction({
+        caretaker: request.caretaker,
+        property: request.property,
+        actionType: 'maintenance_resolved',
+        description: `Resolved maintenance request: ${request.description}`,
+        status: 'completed',
+      });
+    }
     res.json(request);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update request.' });
