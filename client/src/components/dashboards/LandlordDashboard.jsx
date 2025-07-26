@@ -627,7 +627,6 @@ function LandlordDashboard() {
             caretaker: p.caretaker, // include caretaker field
           }))
         );
-        console.log('Fetched properties:', propertyArray);
         // Tenants
         const tenantRes = await fetch(`${API_URL}/api/tenants`, {
           headers: { Authorization: `Bearer ${token}` },
