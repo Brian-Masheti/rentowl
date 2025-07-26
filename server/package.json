@@ -1,5 +1,7 @@
 {
-  "name": "server",
+  "name": "rentowl-server",
+  "description": "Smart Rent Management",
+  "author": "Brian Masheti",
   "version": "1.0.0",
   "main": "src/server.js",
   "type": "commonjs",
