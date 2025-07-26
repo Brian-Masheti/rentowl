@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="client/public/images/logo2.png" alt="RentOwl Logo" width="180"/>
+</p>
+
 # RentOwl Privacy & Data Access Policy
 
 ## 1. Data Ownership & Privacy

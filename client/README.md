@@ -1,116 +1,12 @@
-# RentOwl – Rental Property Management System
+# React + Vite
 
-RentOwl is a modern, full-stack rental property management platform for landlords, caretakers, and tenants. It streamlines property, finance, and communication workflows in one place.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## 🚧 Project Status
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-**This project is under active development.**  
-- The backend is fully functional and tested with Postman.
-- The frontend is being actively developed and improved.
+## Expanding the ESLint configuration
 
----
-
-## ✨ Features
-
-### Landlord Capabilities
-- View all properties in diagram format
-- Access financial reports and rent summaries
-- Generate tenant statements
-- Assign caretaker duties to properties
-- Monitor caretaker actions on tenant requests
-- Access legal documents and agreements
-- View tenant check-in documentation
-- Access monthly income reports per property
-- View occupancy vs. vacancy statistics
-- Access rent arrears reports
-
-### Caretaker Capabilities
-- Report and manage property maintenance needs
-- Assign and update maintenance tasks
-- Mark issues as resolved
-- Communicate with tenants through the app
-- Send announcements and reports to tenants
-- Update tenants on actions taken
-- View rent payment status (paid/unpaid)
-- View service history per property
-- Track active maintenance requests
-
-### Tenant Capabilities
-- View housing agreement and rent payment history
-- Make online payments (phone, bank card)
-- View payment status updates
-- Pay rent in full or partial amounts
-- Download digital payment receipts
-- Submit maintenance issues (with images, urgency)
-- Track the status of submitted requests
-- Receive announcements and payment reminders
-- See late payment penalties if applicable
-
-### System Features
-- In-app messaging/chat functionality
-- Push notifications for rent reminders, maintenance updates, and announcements
-- Complaint escalation system (if caretaker doesn't respond within 48 hours)
-- Lease management: track start/end dates, move-in/out checklists, automated reminders
-- Records & reports for all roles
-- Document repository for ID docs, utility bills, emergency contacts
-- Payment processing: multiple methods, real-time status, reminders, digital receipts
-
----
-
-## 🖼️ Screenshots
-
-You can find screenshots in the `client/public/images/` folder:
-
-- ![Add Tenants](./public/images/addtenants.png)
-- ![Login](./public/images/login.png)
-- ![Register](./public/images/register.png)
-
----
-
-## 🛠️ Tech Stack
-
-- **Frontend:** React 19, Vite, TypeScript, Tailwind CSS, Radix UI, Chart.js
-- **Backend:** Node.js, Express, MongoDB, Mongoose, JWT, Passport, Multer, Socket.io
-- **Dev Tools:** ESLint, Postman, pnpm, TypeScript
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js, pnpm
-
-### Install dependencies
-```sh
-pnpm install
-cd client && pnpm install
-cd ../server && pnpm install
-```
-
-### Run the app (dev)
-```sh
-cd server && pnpm run dev
-cd ../client && pnpm run dev
-```
-
-### Build for production
-```sh
-cd client && pnpm run build
-cd ../server && pnpm run build
-```
-
----
-
-## 📢 Notes
-
-- The backend API is fully functional and tested with Postman.
-- The frontend is under active development; some features and UI may change.
-- For demo images, see the `client/public/images/` folder.
-
----
-
-## 📬 Contact
-
-For questions or contributions, contact [Brian Masheti](mailto:brianmasheti@outlook.com).
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
