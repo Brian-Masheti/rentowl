@@ -48,6 +48,7 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 
 #### Real-Time & Environment Setup
 - The dashboard uses Socket.io for real-time updates.
+- For real-time logs/notifications, connections are allowed without userId, but chat/DM features require authentication.
 - Configure your `.env` files:
   - `VITE_API_URL` for local backend (e.g., http://localhost:5000)
   - `VITE_API_URL_NETWORK` for LAN backend (e.g., http://192.168.x.x:5000)
