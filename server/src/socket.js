@@ -11,14 +11,17 @@ function setupSocket(server) {
   });
 
   io.on('connection', (socket) => {
-    // Authenticate user (for demo, userId in query)
+    // For chat/DM features, require userId; for logs/notifications, allow connection
     const userId = socket.handshake.query.userId;
-    if (!userId) return socket.disconnect();
-    socket.join(userId);
+    // Only join user-specific rooms if userId is present
+    if (userId) {
+      socket.join(userId);
+    }
 
     // Join all property rooms and DM rooms (client should send roomIds)
     socket.on('join_rooms', ({ roomIds }) => {
       try {
+        if (!userId) return socket.emit('error', { message: 'Authentication required for chat.' });
         if (Array.isArray(roomIds)) {
           roomIds.forEach(roomId => socket.join(roomId));
         }
