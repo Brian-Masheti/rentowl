@@ -28,7 +28,18 @@ RentOwl is a modern, full-stack rental property management platform for landlord
 - See summary stats for quick insights
 - Automated logging for maintenance resolutions and other key events
 - Rate limiting for API protection
+- Clean UI: section title shown only in nav, not repeated in content
+- Only regular users (landlord, tenant, caretaker) can log in at `/login`
 - Fully documented API (see Swagger docs at `/api/docs`)
+
+### Super Admin & Admin Management (RBAC)
+- Secure, dedicated super admin login at `/admin/login` (not public login)
+- Super admin dashboard for managing all admins and support users
+- Create, promote, demote, and assign permissions to admin/support users
+- Role-based access control (RBAC) with roles: super_admin, admin, support, and permissions array
+- Only super admins can access admin management endpoints and UI
+- Admin/support users cannot log in at `/login` (permission denied)
+- MVP focus: landlord features are production-ready; super admin features will be expanded in future versions
 
 #### Real-Time & Environment Setup
 - The dashboard uses Socket.io for real-time updates.
