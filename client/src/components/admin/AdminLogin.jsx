@@ -6,6 +6,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,9 +21,20 @@ const AdminLogin = () => {
         body: JSON.stringify({ identifier, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      if (!res.ok) {
+        // If not authorized, show modal and clear form
+        if (res.status === 401 || res.status === 403) {
+          setShowModal(true);
+          setIdentifier('');
+          setPassword('');
+          setError(null);
+          setLoading(false);
+          return;
+        }
+        throw new Error(data.error || 'Login failed');
+      }
       localStorage.setItem('token', data.token);
-      // Optionally store user info if needed
+      localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.message);
@@ -65,6 +77,28 @@ const AdminLogin = () => {
           {loading ? 'Logging in...' : 'Login as Admin'}
         </button>
       </form>
+      {/* Modal for permission denied */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255, 227, 187, 0.95)' }}>
+          <div className="bg-[#FFE3BB] rounded-2xl p-6 w-full max-w-sm shadow-lg relative border-2 border-[#03A6A1] flex flex-col items-center">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+              onClick={() => setShowModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-bold mb-2 text-[#03A6A1]">Permission Denied</h3>
+            <p className="mb-4 text-[#23272F] text-center">Only super admins can log in here.<br />If you are a regular user, please use the regular login page.</p>
+            <button
+              className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition mt-2"
+              onClick={() => { setShowModal(false); navigate('/login'); }}
+            >
+              Go to Regular Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
