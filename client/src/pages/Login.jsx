@@ -37,6 +37,8 @@ function Login() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState(null);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalRole, setModalRole] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,13 +64,13 @@ function Login() {
       if (data.user) {
         // Block super_admin, admin, and support from logging in here
         if (['super_admin', 'admin', 'support'].includes(data.user.role)) {
-          setError(
-            data.user.role === 'super_admin'
-              ? 'Super admins must log in at /admin/login.'
-              : 'Permission denied. Please contact your super admin.'
-          );
+          setShowModal(true);
+          setModalRole(data.user.role);
+          setIdentifier('');
+          setPassword('');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setError(null);
           return;
         }
         localStorage.setItem('user', JSON.stringify(data.user));
@@ -192,6 +194,39 @@ function Login() {
           </button>
         </div>
       </form>
+      {/* Modal for admin/support/super_admin login attempts */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255, 227, 187, 0.95)' }}>
+          <div className="bg-[#FFE3BB] rounded-2xl p-6 w-full max-w-sm shadow-lg relative border-2 border-[#03A6A1] flex flex-col items-center">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+              onClick={() => setShowModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-bold mb-2 text-[#03A6A1]">Permission Denied</h3>
+            <p className="mb-4 text-[#23272F] text-center">
+              {modalRole === 'super_admin'
+                ? 'Super admins must log in at the admin login page.'
+                : 'Permission denied. Please contact your super admin.'}
+            </p>
+            <button
+              className="bg-[#03A6A1] text-white rounded-full px-6 py-2 font-semibold hover:bg-[#FFA673] transition mt-2"
+              onClick={() => {
+                setShowModal(false);
+                if (modalRole === 'super_admin') {
+                  navigate('/admin/login');
+                } else {
+                  navigate('/');
+                }
+              }}
+            >
+              {modalRole === 'super_admin' ? 'Go to Admin Login' : 'Go to Home'}
+            </button>
+          </div>
+        </div>
+      )}
       {/* Forgot Password Modal */}
       {showForgot && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255, 227, 187, 0.95)' }}>

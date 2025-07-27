@@ -101,7 +101,7 @@ const SuperAdminSidebar = ({ onSelect, selected }) => {
           onClick={() => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/';
+            window.location.href = '/admin/login';
           }}
           className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-base hover:bg-[#FFA673]/80 ${expanded ? 'justify-start' : 'justify-center'}`}
         >
