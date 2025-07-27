@@ -22,6 +22,10 @@ const register = async (req, res) => {
     if (!isStrongPassword(password)) {
       return res.status(400).json({ error: 'Password must be at least 8 characters, include upper and lower case letters, a number, and a symbol (!@#$).' });
     }
+    // Prevent public registration as super admin
+    if (role === 'super_admin') {
+      return res.status(403).json({ error: 'Registration as super admin is not allowed.' });
+    }
     // Check all collections for existing user
     const existingLandlord = await Landlord.findOne({ $or: [ { username }, { email }, { phone } ] });
     const existingTenant = await Tenant.findOne({ $or: [ { username }, { email }, { phone } ] });
@@ -149,9 +153,39 @@ const getMe = async (req, res) => {
   }
 };
 
+// Dedicated admin login (super admin only)
+const adminLogin = async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+    let user = await User.findOne({ $or: [ { username: identifier }, { email: identifier } ] });
+    if (!user || user.role !== 'super_admin') {
+      return res.status(401).json({ error: 'Admin access only.' });
+    }
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Admin login failed.' });
+  }
+};
+
 module.exports = {
   register,
   login,
   usernameAvailable,
-  getMe
+  getMe,
+  adminLogin
 };

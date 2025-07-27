@@ -8,6 +8,7 @@ import CaretakerDashboard from './components/dashboards/CaretakerDashboard';
 import TenantDashboard from './components/dashboards/TenantDashboard';
 import PrivateRoute from './components/PrivateRoute';
 import SuperAdminDashboard from './components/dashboards/SuperAdminDashboard';
+import AdminLogin from './components/admin/AdminLogin';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/register" element={<Register />} />
         <Route
           path="/landlord-dashboard"
@@ -42,6 +44,14 @@ function App() {
         />
         <Route
           path="/super-admin-dashboard"
+          element={
+            <PrivateRoute allowedRoles={["super_admin"]}>
+              <SuperAdminDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
           element={
             <PrivateRoute allowedRoles={["super_admin"]}>
               <SuperAdminDashboard />

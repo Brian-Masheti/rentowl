@@ -8,6 +8,9 @@ client/dist/
 server/dist/
 build/
 
+# Security: never commit admin creation scripts
+server/createSuperAdmin.js
+
 # Environment files
 .env
 .env.*

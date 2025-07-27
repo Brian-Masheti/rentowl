@@ -87,7 +87,6 @@ const CaretakerActions = () => {
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-        <h2 className="text-xl font-bold text-[#03A6A1]">Caretaker Actions</h2>
         <button
           className="px-4 py-2 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition-colors duration-200"
           onClick={handleExport}

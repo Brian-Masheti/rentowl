@@ -241,8 +241,7 @@ function Register() {
               <option value="tenant" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Tenant</option>
               <option value="caretaker" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Caretaker</option>
               <option value="landlord" style={{ background: '#FFE3BB', color: '#03A6A1' }}>Landlord</option>
-              <option value="super_admin" style={{ background: '#FFE3BB', color: '#FF4F0F', fontWeight: 'bold' }}>Super Admin (For System Owner Only)</option>
-            </select>
+                          </select>
           </div>
         </div>
         {(role === 'tenant' || role === 'caretaker') && (

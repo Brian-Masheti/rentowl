@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, usernameAvailable, getMe } = require('../controllers/authController');
+const { register, login, usernameAvailable, getMe, adminLogin } = require('../controllers/authController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { body } = require('express-validator');
 const validate = require('../middleware/validate');
@@ -13,6 +13,7 @@ router.post('/register',
   register
 );
 router.post('/login', login);
+router.post('/admin-login', adminLogin);
 router.get('/username-available/:username', usernameAvailable);
 router.get('/me', requireAuth, getMe);
 

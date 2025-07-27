@@ -15,6 +15,7 @@ import {
 
 import { superAdminMenu } from './dashboardConfig';
 import StickyNavBar from '../shared/StickyNavBar.jsx';
+import AdminManagement from '../admin/AdminManagement';
 
 const sectionTitles = {
   dashboard: 'Super Admin Dashboard',
@@ -45,7 +46,7 @@ const sectionContent = {
   landlords: <p>View and manage landlords.</p>,
   tenants: <p>View and manage tenants.</p>,
   caretakers: <p>View and manage caretakers.</p>,
-  admins: <p>View and manage admins.</p>,
+  admins: <AdminManagement />, // Admin management UI
   properties: <p>Manage all properties here.</p>,
   'financial-reports': <p>View financial reports.</p>,
   maintenance: <p>Manage maintenance tasks and issues.</p>,

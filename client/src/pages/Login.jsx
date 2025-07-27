@@ -60,6 +60,17 @@ function Login() {
       if (!res.ok) throw new Error(data.error || 'Login failed');
       localStorage.setItem('token', data.token);
       if (data.user) {
+        // Block super_admin, admin, and support from logging in here
+        if (['super_admin', 'admin', 'support'].includes(data.user.role)) {
+          setError(
+            data.user.role === 'super_admin'
+              ? 'Super admins must log in at /admin/login.'
+              : 'Permission denied. Please contact your super admin.'
+          );
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          return;
+        }
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.user.role === 'landlord') {
           navigate('/landlord-dashboard');
@@ -67,8 +78,6 @@ function Login() {
           navigate('/caretaker-dashboard');
         } else if (data.user.role === 'tenant') {
           navigate('/tenant-dashboard');
-        } else if (data.user.role === 'super_admin') {
-          navigate('/super-admin-dashboard');
         } else {
           setError('Unknown user role.');
         }
