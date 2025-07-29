@@ -221,10 +221,13 @@ cd ../client && pnpm run dev
 
 ### Build for production
 
+Only the client (frontend) needs to be built for production. The backend does not require a build step—just run it directly.
+
 ```
 cd client && pnpm run build
-cd ../server && pnpm run build
 ```
+
+- The build process for the client now uses code-splitting and manual chunking for optimal performance. Major pages and dashboards are loaded on demand, resulting in a much smaller initial bundle and faster load times.
 
 ---
 
