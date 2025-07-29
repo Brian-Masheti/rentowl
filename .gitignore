@@ -12,6 +12,7 @@ build/
 server/createSuperAdmin.js
 server/resetUserPassword.js
 server/manageUserRole.js
+server/addSuperAdminPermission.js
 
 # Environment files
 .env

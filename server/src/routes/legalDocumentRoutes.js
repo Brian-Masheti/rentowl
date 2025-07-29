@@ -3,6 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireRole } = require('../middleware/rbacMiddleware');
+const requirePermission = require('../middleware/permissionMiddleware');
+const permissions = require('../permissions');
 const {
   uploadDocument,
   listDocuments,
@@ -26,14 +28,14 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Upload a legal document (landlord or super_admin)
-router.post('/upload', requireAuth, requireRole(['landlord', 'super_admin']), upload.single('file'), uploadDocument);
+router.post('/upload', requireAuth, requirePermission(permissions['document:upload']), upload.single('file'), uploadDocument);
 // List documents (all authenticated users)
-router.get('/', requireAuth, listDocuments);
+router.get('/', requireAuth, requirePermission(permissions['document:view']), listDocuments);
 // Download document (all authenticated users)
-router.get('/download/:id', requireAuth, downloadDocument);
+router.get('/download/:id', requireAuth, requirePermission(permissions['document:view']), downloadDocument);
 // Delete document (uploader or super_admin)
-router.delete('/:id', requireAuth, deleteDocument);
+router.delete('/:id', requireAuth, requirePermission(permissions['document:upload']), deleteDocument);
 // Tenant signs a document
-router.post('/:id/sign', requireAuth, requireRole(['tenant']), signDocument);
+router.post('/:id/sign', requireAuth, requirePermission(permissions['document:view']), signDocument);
 
 module.exports = router;

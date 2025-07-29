@@ -9,6 +9,8 @@ const {
   assignCaretakerToProperty
 } = require('../controllers/propertyController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const requirePermission = require('../middleware/permissionMiddleware');
+const permissions = require('../permissions');
 const { upload } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
@@ -17,24 +19,24 @@ const router = express.Router();
 router.post(
   '/',
   requireAuth,
-  requireRole(['landlord']),
+  requirePermission(permissions['property:create']),
   upload.fields([
     { name: 'profilePic', maxCount: 1 },
     { name: 'gallery', maxCount: 10 }
   ]),
   createProperty
 );
-router.get('/', requireAuth, requireRole(['landlord']), getLandlordProperties);
+router.get('/', requireAuth, requirePermission(permissions['property:view']), getLandlordProperties);
 
 // Assign caretaker to property (must be before any /:id route)
-router.put('/:id/assign-caretaker', requireAuth, requireRole(['landlord']), assignCaretakerToProperty);
+router.put('/:id/assign-caretaker', requireAuth, requirePermission(permissions['property:update']), assignCaretakerToProperty);
 
-router.get('/:id', requireAuth, requireRole(['landlord', 'caretaker', 'tenant']), getPropertyById);
+router.get('/:id', requireAuth, requirePermission(permissions['property:view']), getPropertyById);
 
 router.put(
   '/:id',
   requireAuth,
-  requireRole(['landlord']),
+  requirePermission(permissions['property:update']),
   (req, res, next) => {
     try {
       next();
@@ -45,9 +47,9 @@ router.put(
   },
   updateProperty
 );
-router.delete('/:id', requireAuth, requireRole(['landlord']), deleteProperty);
+router.delete('/:id', requireAuth, requirePermission(permissions['property:delete']), deleteProperty);
 
 // PATCH /api/properties/:propertyId/remove-tenant/:tenantId
-router.patch('/:propertyId/remove-tenant/:tenantId', requireAuth, requireRole(['landlord', 'super_admin']), removeTenantFromProperty);
+router.patch('/:propertyId/remove-tenant/:tenantId', requireAuth, requirePermission(permissions['property:update']), removeTenantFromProperty);
 
 module.exports = router;

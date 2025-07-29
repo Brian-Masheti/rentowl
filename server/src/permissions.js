@@ -1,0 +1,27 @@
+// Central permissions map for DRY permission-based access control
+
+module.exports = {
+  'admin:create': 'manage_users',
+  'admin:promote': 'manage_users',
+  'admin:demote': 'manage_users',
+  'admin:update-permissions': 'manage_users',
+  'property:create': 'manage_properties',
+  'property:update': 'manage_properties',
+  'property:delete': 'manage_properties',
+  'property:view': 'view_properties',
+  'user:view': 'view_users',
+  'user:update': 'manage_users',
+  'user:delete': 'manage_users',
+  'finance:view': 'view_reports',
+  'finance:manage': 'manage_finances',
+  'document:upload': 'manage_documents',
+  'document:view': 'manage_documents',
+  'checklist:manage': 'manage_checklists',
+  'maintenance:manage': 'manage_maintenance',
+  'deployment:manage': 'manage_deployments',
+  'logs:view': 'view_logs',
+  'infrastructure:manage': 'manage_infrastructure',
+  'tickets:manage': 'manage_tickets',
+  'announcements:send': 'send_announcements',
+  'notifications:receive': 'receive_notifications',
+};

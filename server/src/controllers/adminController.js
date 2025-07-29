@@ -65,6 +65,13 @@ exports.demoteAdmin = async (req, res) => {
 exports.updateAdminPermissions = async (req, res) => {
   try {
     const { identifier, permissions } = req.body;
+    // Prevent super_admin from removing their own permissions
+    if (req.user && req.user.role === 'super_admin') {
+      const userToEdit = await User.findOne({ $or: [ { email: identifier }, { username: identifier } ] });
+      if (userToEdit && userToEdit.email === req.user.email) {
+        return res.status(403).json({ error: 'Super admin cannot remove their own permissions.' });
+      }
+    }
     const user = await User.findOne({ $or: [ { email: identifier }, { username: identifier } ] });
     if (!user) return res.status(404).json({ error: 'User not found.' });
     user.permissions = permissions || [];

@@ -1,6 +1,8 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireRole } = require('../middleware/rbacMiddleware');
+const requirePermission = require('../middleware/permissionMiddleware');
+const permissions = require('../permissions');
 const {
   createAdmin,
   promoteToAdmin,
@@ -24,9 +26,9 @@ router.get('/all', async (req, res) => {
   }
 });
 
-router.post('/create', createAdmin);
-router.post('/promote', promoteToAdmin);
-router.post('/demote', demoteAdmin);
-router.post('/update-permissions', updateAdminPermissions);
+router.post('/create', requirePermission(permissions['admin:create']), createAdmin);
+router.post('/promote', requirePermission(permissions['admin:promote']), promoteToAdmin);
+router.post('/demote', requirePermission(permissions['admin:demote']), demoteAdmin);
+router.post('/update-permissions', requirePermission(permissions['admin:update-permissions']), updateAdminPermissions);
 
 module.exports = router;

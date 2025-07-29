@@ -7,6 +7,19 @@ const Caretaker = require('../models/Caretaker');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
+function generateUserToken(user) {
+  return jwt.sign(
+    {
+      id: user._id,
+      username: user.username,
+      role: user.role,
+      permissions: user.permissions || []
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
 // Password validation function
 function isStrongPassword(password) {
   // At least 8 chars, 1 upper, 1 lower, 1 number, 1 symbol (!@#$)
@@ -114,11 +127,7 @@ const login = async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
-    const token = jwt.sign(
-      { id: user._id, username: user.username, role: role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateUserToken(user);
     res.json({
       token,
       user: {
@@ -163,11 +172,7 @@ const adminLogin = async (req, res) => {
     }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
-    const token = jwt.sign(
-      { id: user._id, username: user.username, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = generateUserToken(user);
     res.json({
       token,
       user: {
