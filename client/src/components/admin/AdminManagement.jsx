@@ -183,10 +183,7 @@ const AdminManagement = () => {
     setToast({ message: msg, type: 'error' });
   };
 
-  // Responsive: detect mobile
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  // Empty state illustration (simple SVG)
+    // Empty state illustration (simple SVG)
   const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-12">
       <svg width="120" height="120" fill="none" viewBox="0 0 120 120">
@@ -529,7 +526,7 @@ function EditPermissionsModal({ editUser, setEditUser, editPermissions, setEditP
                 return (
                   <span
                     key={p}
-                    className="inline-block bg-[#03A6A1]/10 text-[#03A6A1] border border-[#03A6A1]/30 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap flex items-center gap-1"
+                    className="bg-[#03A6A1]/10 text-[#03A6A1] border border-[#03A6A1]/30 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap flex items-center gap-1"
                     style={{ marginBottom: 2 }}
                   >
                     {label}
