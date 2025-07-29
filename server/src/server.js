@@ -27,6 +27,9 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Serve static images for Swagger UI logo
+app.use('/images', require('express').static(path.join(__dirname, '../../client/public/images')));
 const server = http.createServer(app);
 
 const allowedOrigins = ['http://localhost:5173', 'http://192.168.100.7:5173'];
