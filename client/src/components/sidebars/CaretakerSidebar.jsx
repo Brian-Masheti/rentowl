@@ -1,31 +1,8 @@
 import React, { useState } from 'react';
-import {
-  FaHome,
-  FaTools,
-  FaClipboardList,
-  FaCheckCircle,
-  FaComments,
-  FaBullhorn,
-  FaSyncAlt,
-  FaMoneyCheckAlt,
-  FaHistory,
-  FaTasks,
-  FaSignOutAlt,
-  FaUserCircle
-} from 'react-icons/fa';
+import { caretakerMenu } from '../dashboards/dashboardConfig';
+import { FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 
-const items = [
-  { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
-  { label: 'Maintenance Needs', icon: <FaTools />, key: 'maintenance-needs' },
-  { label: 'Maintenance Tasks', icon: <FaTasks />, key: 'maintenance-tasks' },
-  { label: 'Resolved Issues', icon: <FaCheckCircle />, key: 'resolved-issues' },
-  { label: 'Tenant Communication', icon: <FaComments />, key: 'tenant-communication' },
-  { label: 'Announcements & Reports', icon: <FaBullhorn />, key: 'announcements-reports' },
-  { label: 'Action Updates', icon: <FaSyncAlt />, key: 'action-updates' },
-  { label: 'Rent Status', icon: <FaMoneyCheckAlt />, key: 'rent-status' },
-  { label: 'Service History', icon: <FaHistory />, key: 'service-history' },
-  { label: 'Active Requests', icon: <FaClipboardList />, key: 'active-requests' },
-];
+const items = caretakerMenu;
 
 const CaretakerSidebar = ({ onSelect, selected }) => {
   const [expanded, setExpanded] = useState(false);

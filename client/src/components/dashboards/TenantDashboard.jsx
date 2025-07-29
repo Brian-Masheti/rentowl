@@ -29,6 +29,8 @@ const sectionTitles = {
   'late-penalties': 'Late Penalties',
 };
 
+import TenantChecklistMenu from '../checklists/TenantChecklistMenu';
+
 const sectionContent = {
   'dashboard': (
     <>
@@ -38,6 +40,7 @@ const sectionContent = {
     </>
   ),
   'housing-agreement': <p>View and download your housing agreement here.</p>,
+  'tenant-checkin': <TenantChecklistMenu />, 
   'rent-payment-history': <p>See your rent payment history and receipts.</p>,
   'payment-status': <p>See your payment status here.</p>,
   'make-payment': <p>Make a new rent payment securely.</p>,

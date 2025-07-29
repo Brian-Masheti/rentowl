@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true },
     phone: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['landlord', 'tenant', 'caretaker', 'admin', 'support', 'super_admin'], required: true },
+    role: { type: String, enum: ['landlord', 'tenant', 'caretaker', 'admin', 'support', 'super_admin', 'devops'], required: true },
     permissions: [{ type: String }], // e.g., ['manage_users', 'view_reports']
     isActive: { type: Boolean, default: true },
     profilePic: { type: String },

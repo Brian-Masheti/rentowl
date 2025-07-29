@@ -14,10 +14,10 @@ const router = express.Router();
 // All routes require authentication and super_admin role
 router.use(requireAuth, requireRole(['super_admin']));
 
-// List all admins/support/super_admin
+// List all admins/support/devops/super_admin
 router.get('/all', async (req, res) => {
   try {
-    const admins = await User.find({ role: { $in: ['admin', 'support', 'super_admin'] } });
+    const admins = await User.find({ role: { $in: ['admin', 'support', 'devops', 'super_admin'] } });
     res.json({ admins });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch admins.' });

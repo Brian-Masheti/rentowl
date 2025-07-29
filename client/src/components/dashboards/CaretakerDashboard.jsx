@@ -18,6 +18,8 @@ const sectionTitles = {
   profile: 'My Profile',
 };
 
+import CaretakerChecklistMenu from '../checklists/CaretakerChecklistMenu';
+
 const sectionContent = {
   dashboard: (
     <>
@@ -26,6 +28,7 @@ const sectionContent = {
       </p>
     </>
   ),
+  checklist: <CaretakerChecklistMenu />,
   'maintenance-needs': <p>View and manage maintenance needs here.</p>,
   'maintenance-tasks': <p>Track and assign maintenance tasks.</p>,
   'resolved-issues': <p>See resolved maintenance issues.</p>,

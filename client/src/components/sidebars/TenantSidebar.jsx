@@ -1,30 +1,8 @@
 import React, { useState } from 'react';
-import {
-  FaHome,
-  FaFileAlt,
-  FaMoneyBillWave,
-  FaCreditCard,
-  FaReceipt,
-  FaTools,
-  FaComments,
-  FaBell,
-  FaExclamationTriangle,
-  FaSignOutAlt,
-  FaUserCircle
-} from 'react-icons/fa';
+import { tenantMenu } from '../dashboards/dashboardConfig';
+import { FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 
-const items = [
-  { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
-  { label: 'Housing Agreement', icon: <FaFileAlt />, key: 'housing-agreement' },
-  { label: 'Rent Payment History', icon: <FaMoneyBillWave />, key: 'rent-payment-history' },
-  { label: 'Make Payment', icon: <FaCreditCard />, key: 'make-payment' },
-  { label: 'Payment Status', icon: <FaBell />, key: 'payment-status' },
-  { label: 'Receipts', icon: <FaReceipt />, key: 'receipts' },
-  { label: 'Maintenance Requests', icon: <FaTools />, key: 'maintenance-requests' },
-  { label: 'Announcements', icon: <FaComments />, key: 'announcements' },
-  { label: 'Reminders', icon: <FaBell />, key: 'reminders' },
-  { label: 'Late Penalties', icon: <FaExclamationTriangle />, key: 'late-penalties' },
-];
+const items = tenantMenu;
 
 const TenantSidebar = ({ onSelect, selected }) => {
   const [expanded, setExpanded] = useState(false);

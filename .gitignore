@@ -10,6 +10,8 @@ build/
 
 # Security: never commit admin creation scripts
 server/createSuperAdmin.js
+server/resetUserPassword.js
+server/manageUserRole.js
 
 # Environment files
 .env

@@ -1,0 +1,23 @@
+// Default checklist items for Kenyan rentals
+export const DEFAULT_CHECKLIST_ITEMS = [
+  { label: 'Lights & Bulbs', key: 'lights' },
+  { label: 'Sockets & Switches', key: 'sockets' },
+  { label: 'Taps & Plumbing', key: 'taps' },
+  { label: 'Toilets & Showers', key: 'toilets' },
+  { label: 'Doors & Locks', key: 'doors' },
+  { label: 'Windows & Grills', key: 'windows' },
+  { label: 'Kitchen Sink', key: 'kitchen_sink' },
+  { label: 'Cabinets & Wardrobes', key: 'cabinets' },
+  { label: 'Floor Condition', key: 'floor' },
+  { label: 'Ceiling & Roof', key: 'ceiling' },
+  { label: 'Walls & Paint', key: 'walls' },
+  { label: 'Curtain Rails', key: 'curtain_rails' },
+  { label: 'Meter Readings', key: 'meter_readings' },
+  { label: 'Pest Issues', key: 'pests' },
+  { label: 'Other Appliances', key: 'appliances' },
+  { label: 'General Cleanliness', key: 'cleanliness' },
+  { label: 'Gate/Compound', key: 'gate' },
+  { label: 'Garbage Disposal', key: 'garbage' },
+  { label: 'Internet/TV Points', key: 'internet' },
+  { label: 'Any Other Notes', key: 'notes' },
+];

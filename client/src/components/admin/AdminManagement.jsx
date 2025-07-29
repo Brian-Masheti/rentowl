@@ -4,7 +4,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
-  { value: 'support', label: 'Support' }
+  { value: 'support', label: 'Support' },
+  { value: 'devops', label: 'DevOps' }
 ];
 const PERMISSIONS = [
   { value: 'manage_users', label: 'Manage Users' },
@@ -26,21 +27,20 @@ const AdminManagement = () => {
 
   // Fetch all admins/support users
   const fetchAdmins = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/caretakers`, { headers: { Authorization: `Bearer ${token}` } });
-      const caretakers = (await res.json()).caretakers || [];
-      // Fetch all users with admin/support roles
-      const res2 = await fetch(`${API_URL}/api/admin/all`, { headers: { Authorization: `Bearer ${token}` } });
-      const admins = (await res2.json()).admins || [];
-      setAdmins(admins);
-    } catch (err) {
-      setError('Failed to fetch admins.');
-    } finally {
-      setLoading(false);
-    }
+  setLoading(true);
+  setError(null);
+  try {
+  const token = localStorage.getItem('token');
+  // Only fetch users with admin/support/devops/super_admin roles from backend
+  const res2 = await fetch(`${API_URL}/api/admin/all`, { headers: { Authorization: `Bearer ${token}` } });
+  const admins = (await res2.json()).admins || [];
+  setAdmins(admins);
+  } catch (err) {
+  console.log(err);
+  setError('Failed to fetch admins.');
+  } finally {
+  setLoading(false);
+  }
   };
 
   useEffect(() => { fetchAdmins(); }, []);
@@ -103,16 +103,18 @@ const AdminManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {admins.map(a => (
-              <tr key={a._id} className="hover:bg-[#FFE3BB]/60">
-                <td className="px-4 py-2">{a.firstName} {a.lastName}</td>
-                <td className="px-4 py-2">{a.username}</td>
-                <td className="px-4 py-2">{a.email}</td>
-                <td className="px-4 py-2">{a.role}</td>
-                <td className="px-4 py-2">{(a.permissions || []).join(', ')}</td>
-                <td className="px-4 py-2">{/* TODO: Add promote/demote/permissions UI */}</td>
-              </tr>
-            ))}
+            {admins
+              .filter(a => ['admin', 'support', 'devops', 'super_admin'].includes(a.role))
+              .map(a => (
+                <tr key={a._id} className="hover:bg-[#FFE3BB]/60">
+                  <td className="px-4 py-2">{a.firstName} {a.lastName}</td>
+                  <td className="px-4 py-2">{a.username}</td>
+                  <td className="px-4 py-2">{a.email}</td>
+                  <td className="px-4 py-2">{a.role === 'devops' ? 'DevOps' : a.role === 'super_admin' ? 'Super Admin' : a.role.charAt(0).toUpperCase() + a.role.slice(1)}</td>
+                  <td className="px-4 py-2">{(a.permissions || []).join(', ')}</td>
+                  <td className="px-4 py-2">{/* TODO: Add promote/demote/permissions UI */}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       )}

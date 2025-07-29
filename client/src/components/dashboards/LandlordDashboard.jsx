@@ -455,6 +455,8 @@ import FinancialReport from '../financial/FinancialReport';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import CaretakerManagement from '../caretakers/CaretakerManagement';
 import CaretakerActions from '../caretakers/actions/CaretakerActions';
+import LegalDocuments from '../legal/LegalDocuments';
+import CheckListManager from '../checklists/CheckListManager';
 import {
   FaHome,
   FaBuilding,
@@ -728,8 +730,8 @@ function LandlordDashboard() {
     'assign-caretaker': <AssignCaretakerToPropertySection properties={properties} refresh={refresh} />,
     'caretaker-management': <CaretakerManagement />,
     'caretaker-actions': <CaretakerActions />,
-    'legal-documents': <p>View legal documents here.</p>,
-    'tenant-checkin': <p>View tenant check-in documents here.</p>,
+    'legal-documents': <LegalDocuments />,
+    'tenant-checkin': <CheckListManager />,
     'monthly-income': <FinancialReport type="monthly-income" />, 
     'occupancy-vacancy': <FinancialReport type="occupancy" />, 
     'rent-arrears': <FinancialReport type="arrears" />, 
