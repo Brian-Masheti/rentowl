@@ -15,7 +15,7 @@
 - Landlords have exclusive access to their financial dashboards, tenant lists, property records, and maintenance requests.
 - Other landlords and clients cannot view or access your data.
 
-## 3. Super Admin Access
+## 3. Super Admin Access & Permissions
 
 - The RentOwl super admin (system administrator) has technical access to all data in the system for the sole purposes of:
   - Providing technical support and troubleshooting
@@ -23,6 +23,8 @@
   - Ensuring system security, integrity, and compliance with legal requirements
 - Super admin access to client data is strictly limited to these support and compliance scenarios and is not used for monitoring, competitive analysis, or any business purpose.
 - All super admin access to client data is logged and auditable.
+- Super admins have full system control and cannot remove their own critical permissions, ensuring system integrity and support for all clients.
+- All admin/support/devops users have role-based and permission-based access, and their actions are logged for transparency.
 
 ## 4. Data Security
 
