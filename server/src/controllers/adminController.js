@@ -46,7 +46,7 @@ exports.promoteToAdmin = async (req, res) => {
   }
 };
 
-// Demote admin/support to regular user
+// Demote admin/support to regular user (soft delete: set isActive: false)
 exports.demoteAdmin = async (req, res) => {
   try {
     const { identifier, newRole } = req.body;
@@ -54,6 +54,7 @@ exports.demoteAdmin = async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found.' });
     user.role = newRole || 'tenant';
     user.permissions = [];
+    user.isActive = false; // Soft delete
     await user.save();
     res.json({ user });
   } catch (err) {

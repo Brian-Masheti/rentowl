@@ -58,7 +58,17 @@ export const caretakerMenu = [
 
 export const superAdminMenu = [
   { label: 'Dashboard', icon: <FaHome />, key: 'dashboard' },
-  { label: 'User Management', icon: <FaUsers />, key: 'user-management' },
+  {
+    label: 'User Management',
+    icon: <FaUsers />,
+    key: 'user-management',
+    subItems: [
+      { label: 'Landlords', key: 'landlords' },
+      { label: 'Tenants', key: 'tenants' },
+      { label: 'Caretakers', key: 'caretakers' },
+      { label: 'Admins', key: 'admins' },
+    ]
+  },
   { label: 'Properties', icon: <FaBuilding />, key: 'properties' },
   { label: 'Financial Reports', icon: <FaMoneyBillWave />, key: 'financial-reports' },
   { label: 'Maintenance', icon: <FaTools />, key: 'maintenance' },
