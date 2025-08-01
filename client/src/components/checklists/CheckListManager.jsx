@@ -91,6 +91,10 @@ const CheckListManager = () => {
               <th className="p-2 text-left">Item</th>
               <th className="p-2 text-left">Status</th>
               <th className="p-2 text-left">Comment</th>
+              <th className="p-2 text-left">Tenant</th>
+              <th className="p-2 text-left">Caretaker</th>
+              <th className="p-2 text-left">Property</th>
+              <th className="p-2 text-left">Unit Type</th>
               <th className="p-2 text-left">Photo</th>
             </tr>
           </thead>
@@ -117,6 +121,42 @@ const CheckListManager = () => {
                     placeholder="Comment (optional)"
                     value={item.comment}
                     onChange={e => handleItemChange(idx, 'comment', e.target.value)}
+                  />
+                </td>
+                <td className="p-2">
+                  {/* Placeholder for Tenant selection */}
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Tenant"
+                    disabled
+                  />
+                </td>
+                <td className="p-2">
+                  {/* Placeholder for Caretaker selection */}
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Caretaker"
+                    disabled
+                  />
+                </td>
+                <td className="p-2">
+                  {/* Placeholder for Property selection */}
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Property"
+                    disabled
+                  />
+                </td>
+                <td className="p-2">
+                  {/* Placeholder for Unit Type selection */}
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Unit Type"
+                    disabled
                   />
                 </td>
                 <td className="p-2">

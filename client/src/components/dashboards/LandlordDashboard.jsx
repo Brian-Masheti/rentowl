@@ -1,6 +1,17 @@
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import LandlordSidebar from '../sidebars/LandlordSidebar';
+import {
+  FaHome,
+  FaBuilding,
+  FaMoneyBillWave,
+  FaFileInvoiceDollar,
+  FaUsers,
+  FaChartBar,
+  FaBalanceScale,
+  FaUserTie,
+  FaClipboardCheck
+} from 'react-icons/fa';
 
 // --- AssignCaretakerToPropertySection component ---
 function AssignCaretakerToPropertySection({ properties, refresh }) {
@@ -457,16 +468,6 @@ import CaretakerManagement from '../caretakers/CaretakerManagement';
 import CaretakerActions from '../caretakers/actions/CaretakerActions';
 import LegalDocuments from '../legal/LegalDocuments';
 import CheckListManager from '../checklists/CheckListManager';
-import {
-  FaHome,
-  FaBuilding,
-  FaMoneyBillWave,
-  FaFileInvoiceDollar,
-  FaUsers,
-  FaChartBar,
-  FaBalanceScale
-} from 'react-icons/fa';
-
 const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
 const PropertyList = lazy(() => import('../properties/PropertyList'));
 
@@ -572,6 +573,90 @@ const PropertySection = () => {
   );
 };
 
+// Quick access links component
+function QuickAccessLinks({ onQuickAccess }) {
+  const links = [
+    { label: 'Add Property', section: 'properties', color: '#03A6A1', icon: <FaBuilding /> },
+    { label: 'Add Tenant', section: 'add-tenant', color: '#FFA673', icon: <FaUsers /> },
+    { label: 'Assign Caretaker', section: 'assign-caretaker', color: '#23272F', icon: <FaUserTie /> },
+    { label: 'View Maintenance', section: 'maintenance', color: '#FF4F0F', icon: <FaClipboardCheck /> },
+    { label: 'Financial Reports', section: 'financial-reports', color: '#03A6A1', icon: <FaMoneyBillWave /> },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      {links.map(link => (
+        <button
+          key={link.label}
+          onClick={() => onQuickAccess && onQuickAccess(link.section)}
+          className="rounded-xl shadow-lg p-4 flex flex-col items-center hover:scale-105 transition-transform"
+          style={{ background: '#FFF', border: `2px solid ${link.color}`, cursor: 'pointer' }}
+        >
+          <span className="text-2xl mb-1" style={{ color: link.color }}>{link.icon}</span>
+          <span className="font-semibold text-gray-700 text-sm">{link.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Dashboard overview stats component
+function DashboardOverviewStats() {
+  const [stats, setStats] = React.useState(null);
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = import.meta.env ? import.meta.env.VITE_API_URL : '';
+        const res = await fetch(`${API_URL || ''}/api/landlord/overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch {}
+    };
+    fetchStats();
+  }, []);
+  if (!stats) return <div className="mb-6">Loading overview...</div>;
+  const cards = [
+    { label: 'Properties', value: stats.properties, color: '#03A6A1' },
+    { label: 'Tenants', value: stats.tenants, color: '#FFA673' },
+    { label: 'Caretakers', value: stats.caretakers, color: '#23272F' },
+    { label: 'Open Maintenance', value: stats.openMaintenance, color: '#FF4F0F' },
+    { label: 'Arrears', value: `Ksh ${stats.arrears}`, color: '#FF4F0F' },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      {cards.map(card => (
+        <div key={card.label} className="rounded-xl shadow-lg p-4 flex flex-col items-center" style={{ background: '#FFF', border: `2px solid ${card.color}` }}>
+          <div className="text-2xl font-bold mb-1" style={{ color: card.color }}>{card.value}</div>
+          <div className="text-sm font-semibold text-gray-700">{card.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Personalized welcome message component
+function PersonalizedWelcome() {
+  let name = 'User';
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        name = user.firstName || user.username || 'User';
+      } catch {}
+    }
+  }
+  return (
+    <div style={{ fontWeight: 700, fontSize: 22, color: '#03A6A1', marginBottom: 16 }}>
+      Welcome, {name}!
+    </div>
+  );
+}
+
 function LandlordDashboard() {
   // On mount, try to load last selected section from localStorage
   const getInitialSection = () => {
@@ -585,6 +670,7 @@ function LandlordDashboard() {
   const [properties, setProperties] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   // Save selected section to localStorage whenever it changes
   useEffect(() => {
@@ -606,15 +692,20 @@ function LandlordDashboard() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     const fetchData = async () => {
-      // setLoading(true); (removed, not used)
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
         const token = localStorage.getItem('token');
-        // Properties
-        const propRes = await fetch(`${API_URL}/api/properties`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Fetch properties and tenants in parallel
+        const [propRes, tenantRes] = await Promise.all([
+          fetch(`${API_URL}/api/properties`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/api/tenants`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        ]);
         let propData = await propRes.json();
         let propertyArray = Array.isArray(propData) ? propData : propData.properties || [];
         setProperties(
@@ -630,10 +721,6 @@ function LandlordDashboard() {
             caretaker: p.caretaker, // include caretaker field
           }))
         );
-        // Tenants
-        const tenantRes = await fetch(`${API_URL}/api/tenants`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
         const tenantData = await tenantRes.json();
         setTenants((tenantData.tenants || []).map((t) => ({
           id: t._id,
@@ -651,7 +738,7 @@ function LandlordDashboard() {
         setTenants([]);
         console.error('Failed to fetch properties or tenants:', err);
       } finally {
-        // setLoading(false); (removed, not used)
+        setLoading(false);
       }
     };
     fetchData();
@@ -682,10 +769,44 @@ function LandlordDashboard() {
   const sectionContent = {
     dashboard: (
       <>
-        <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
-          Welcome, Landlord! Here you can manage your properties, view financials, and more.
-        </p>
-      </>
+        <PersonalizedWelcome />
+        <QuickAccessLinks onQuickAccess={setSelectedSection} />
+        <DashboardOverviewStats />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Recent Activity Feed */}
+          <div className="bg-white rounded-xl shadow-lg p-6 col-span-2">
+            <div className="font-bold text-lg mb-2 text-[#03A6A1]">Recent Activity</div>
+            <ul className="divide-y divide-[#FFA673]/30">
+              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1]" /> New tenant <b>Jane Doe</b> added to <b>Property A</b> <span className="text-gray-400 ml-auto">2 min ago</span></li>
+              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FFA673]" /> Maintenance request <b>#123</b> created <span className="text-gray-400 ml-auto">10 min ago</span></li>
+              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FF4F0F]" /> Payment <b>Ksh 12,000</b> received from <b>John Smith</b> <span className="text-gray-400 ml-auto">1 hr ago</span></li>
+              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1]" /> Caretaker <b>Mary</b> resolved maintenance <b>#122</b> <span className="text-gray-400 ml-auto">2 hrs ago</span></li>
+              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FFA673]" /> Lease agreement signed by <b>Jane Doe</b> <span className="text-gray-400 ml-auto">Today</span></li>
+            </ul>
+          </div>
+          {/* Shortcuts to Reports */}
+          <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
+            <div className="font-bold text-lg mb-2 text-[#03A6A1]">Quick Reports</div>
+            <button className="mb-2 w-full bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition">Download Financial Report</button>
+            <button className="mb-2 w-full bg-[#FFA673] text-white font-bold py-2 px-4 rounded hover:bg-[#03A6A1] transition">View Arrears Report</button>
+            <button className="w-full bg-[#23272F] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition">Occupancy Report</button>
+          </div>
+        </div>
+        {/* Profile & Settings Quick Access */}
+        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row items-center gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#03A6A1]/10 flex items-center justify-center text-3xl text-[#03A6A1] font-bold">L</div>
+            <div>
+              <div className="font-bold text-lg">Landlord1</div>
+              <div className="text-gray-500 text-sm">landlord1@email.com</div>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col md:flex-row gap-2 md:justify-end">
+            <button className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition" onClick={() => setSelectedSection('settings')}>Edit Profile</button>
+            <button className="bg-[#FFA673] text-white font-bold py-2 px-4 rounded hover:bg-[#03A6A1] transition" onClick={() => setSelectedSection('settings')}>Settings</button>
+          </div>
+        </div>
+              </>
     ),
     properties: <PropertySection />, 
     'financial-reports': <FinancialReport type="report" />, 

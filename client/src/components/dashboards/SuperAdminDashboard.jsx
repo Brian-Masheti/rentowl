@@ -34,11 +34,14 @@ const sectionTitles = {
   profile: 'My Profile',
 };
 
+import PersonalizedWelcome from '../shared/PersonalizedWelcome';
+
 const sectionContent = {
   dashboard: (
     <>
+      <PersonalizedWelcome />
       <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
-        Welcome, Super Admin! Here you can manage users, properties, finances, and more.
+        Here you can manage users, properties, finances, and more.
       </p>
     </>
   ),

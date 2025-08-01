@@ -7,9 +7,13 @@ function requireAuth(req, res, next) {
   if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'No token.' });
   try {
     const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
+    // DEBUG: Log the decoded JWT and Authorization header
+    console.log('AUTH HEADER:', auth);
+    console.log('DECODED JWT:', decoded);
     req.user = decoded;
     next();
-  } catch {
+  } catch (err) {
+    console.log('JWT VERIFY ERROR:', err);
     res.status(401).json({ error: 'Invalid token.' });
   }
 }

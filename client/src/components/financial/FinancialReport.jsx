@@ -365,6 +365,37 @@ const FinancialReport = ({ type }) => {
     );
   }
 
+  if (type === 'monthly-income' && data && data.data) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 min-h-[200px]">
+        <h2 className="text-2xl font-bold mb-6 text-[#03A6A1]">Monthly Income</h2>
+        <ResponsiveTableOrCards
+          columns={[
+            { key: 'propertyName', label: 'Property' },
+            { key: 'year', label: 'Year' },
+            { key: 'month', label: 'Month', render: (row) => new Date(row.year, row.month - 1).toLocaleString('default', { month: 'short' }) },
+            { key: 'totalIncome', label: 'Total Income', render: (row) => formatCurrency(row.totalIncome) },
+          ]}
+          data={data.data}
+          keyField={row => `${row.propertyId}-${row.year}-${row.month}`}
+          cardTitle={row => `${row.propertyName} (${new Date(row.year, row.month - 1).toLocaleString('default', { month: 'short', year: 'numeric' })})`}
+          cardContent={row => (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Income</span>
+                <span className="text-lg font-extrabold text-[#03A6A1]">{formatCurrency(row.totalIncome)}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Month</span>
+                <span className="text-lg font-bold text-[#FFA673]">{new Date(row.year, row.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+              </div>
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6 min-h-[200px]">
       {!loading && !error && data && (

@@ -114,7 +114,12 @@ const login = async (req, res) => {
     let role = user && user.role;
     if (!user) {
       user = await Landlord.findOne({ $or: [ { username: identifier }, { email: identifier } ] });
-      role = user ? 'landlord' : undefined;
+      if (user) {
+        user.role = 'landlord';
+        role = 'landlord';
+      } else {
+        role = undefined;
+      }
     }
     if (!user) {
       user = await Tenant.findOne({ $or: [ { username: identifier }, { email: identifier } ] });

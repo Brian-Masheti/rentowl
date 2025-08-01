@@ -31,11 +31,14 @@ const sectionTitles = {
 
 import TenantChecklistMenu from '../checklists/TenantChecklistMenu';
 
+import PersonalizedWelcome from '../shared/PersonalizedWelcome';
+
 const sectionContent = {
   'dashboard': (
     <>
+      <PersonalizedWelcome />
       <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
-        Welcome, Tenant! Here you can pay rent, submit maintenance requests, and access your documents.
+        Here you can pay rent, submit maintenance requests, and access your documents.
       </p>
     </>
   ),

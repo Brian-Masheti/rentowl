@@ -53,10 +53,53 @@ const getFinancialReports = async (req, res) => {
 
 // Placeholders for other endpoints
 const getMonthlyIncome = async (req, res) => {
-  res.json({
-    message: 'Monthly income endpoint is working.',
-    data: [],
-  });
+  try {
+    const landlordId = req.user && req.user.id;
+    if (!landlordId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Fetch all properties for this landlord
+    const properties = await Property.find({ landlord: landlordId, isDeleted: { $ne: true } });
+    const propertyIds = properties.map(p => p._id);
+    const propertyMap = properties.reduce((acc, p) => {
+      acc[p._id.toString()] = p.name;
+      return acc;
+    }, {});
+
+    // Aggregate payments by property and month
+    const payments = await Payment.aggregate([
+      { $match: {
+          property: { $in: propertyIds },
+          status: 'paid'
+        }
+      },
+      { $group: {
+          _id: {
+            property: '$property',
+            year: { $year: '$dueDate' },
+            month: { $month: '$dueDate' }
+          },
+          totalIncome: { $sum: '$amount' }
+        }
+      },
+      { $sort: { '_id.year': -1, '_id.month': -1 } }
+    ]);
+
+    // Format result
+    const result = payments.map(p => ({
+      propertyId: p._id.property,
+      propertyName: propertyMap[p._id.property.toString()] || 'Unknown',
+      year: p._id.year,
+      month: p._id.month,
+      totalIncome: p.totalIncome
+    }));
+
+    res.json({
+      data: result
+    });
+  } catch (err) {
+    console.error('Error in getMonthlyIncome:', err);
+    res.status(500).json({ error: 'Failed to generate monthly income report.' });
+  }
 };
 
 const getRentArrears = async (req, res) => {

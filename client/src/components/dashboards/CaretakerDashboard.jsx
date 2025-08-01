@@ -20,11 +20,14 @@ const sectionTitles = {
 
 import CaretakerChecklistMenu from '../checklists/CaretakerChecklistMenu';
 
+import PersonalizedWelcome from '../shared/PersonalizedWelcome';
+
 const sectionContent = {
   dashboard: (
     <>
+      <PersonalizedWelcome />
       <p style={{ color: '#23272F', fontSize: 18, background: '#FFF', padding: '12px 24px', borderRadius: 8, marginBottom: 32, border: '2px solid #FFA673' }}>
-        Welcome, Caretaker! Here you can manage maintenance, interact with tenants, and more.
+        Here you can manage maintenance, interact with tenants, and more.
       </p>
     </>
   ),
