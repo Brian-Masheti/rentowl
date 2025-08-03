@@ -68,6 +68,19 @@ const updateTenant = async (req, res) => {
     tenant.unitLabel = newUnitLabel;
     tenant.floor = newFloor;
     await tenant.save();
+    // Log activity: tenant assigned or moved
+    try {
+      if (newPropertyId && newUnitLabel) {
+        const Activity = require('../models/Activity');
+        const property = await Property.findById(newPropertyId);
+        await Activity.create({
+          landlord: property.landlord,
+          type: 'tenant_assigned',
+          message: `Tenant ${tenant.firstName} ${tenant.lastName} assigned to ${property.name} (${newUnitLabel})`,
+          data: { tenantId: tenant._id, propertyId: property._id, unitLabel: newUnitLabel }
+        });
+      }
+    } catch (err) { /* ignore activity log errors */ }
     res.json(tenant);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update tenant.' });
@@ -130,6 +143,19 @@ const createTenant = async (req, res) => {
         if (found) await property.save();
       }
     }
+    // Log activity: tenant created and assigned
+    try {
+      if (propertyId && unitLabel) {
+        const Activity = require('../models/Activity');
+        const property = await Property.findById(propertyId);
+        await Activity.create({
+          landlord: property.landlord,
+          type: 'tenant_assigned',
+          message: `Tenant ${tenant.firstName} ${tenant.lastName} assigned to ${property.name} (${unitLabel})`,
+          data: { tenantId: tenant._id, propertyId: property._id, unitLabel }
+        });
+      }
+    } catch (err) { /* ignore activity log errors */ }
     res.status(201).json(tenant);
   } catch (err) {
     console.error('CREATE TENANT ERROR:', err && err.stack ? err.stack : err);

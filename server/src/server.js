@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const legalDocumentRoutes = require('./routes/legalDocumentRoutes');
 const checkListRoutes = require('./routes/checkListRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const activityRoutes = require('./routes/activityRoutes');
 const { setupSocket } = require('./socket');
 const { checkLandlordSubscription } = require('./middleware/landlordSubscriptionMiddleware');
 const errorHandler = require('./middleware/errorHandler');
@@ -66,6 +67,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/legal-documents', legalDocumentRoutes);
 app.use('/api/checklists', checkListRoutes);
 app.use('/api', dashboardRoutes);
+app.use('/api', activityRoutes);
 app.use('/api/profile', require('./routes/profileRoutes'));
 
 // Block expired landlords for all protected landlord routes

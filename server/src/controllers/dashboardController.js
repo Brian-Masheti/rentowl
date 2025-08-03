@@ -24,8 +24,8 @@ exports.getLandlordOverview = async (req, res) => {
     // Tenants in landlord's properties
     const tenants = await Tenant.find({ property: { $in: propertyIds } }).select('_id');
 
-    // Caretakers assigned to landlord's properties (unique)
-    const caretakers = await Caretaker.find({ properties: { $in: propertyIds }, isActive: true }).select('_id');
+    // Count all active caretakers in the system
+    const caretakers = await Caretaker.countDocuments({ isActive: true });
 
     // Open maintenance requests for landlord's properties
     const openMaintenance = await MaintenanceRequest.countDocuments({ property: { $in: propertyIds }, status: { $in: ['pending', 'in_progress'] } });
@@ -44,7 +44,7 @@ exports.getLandlordOverview = async (req, res) => {
     res.json({
       properties: properties.length,
       tenants: tenants.length,
-      caretakers: caretakers.length,
+      caretakers,
       openMaintenance,
       arrears,
       unreadNotifications

@@ -120,7 +120,7 @@ const getLandlordProperties = async (req, res) => {
   try {
     const landlord = req.user && req.user.id;
     const properties = await Property.find({ landlord, isDeleted: { $ne: true } })
-      // .populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' })
+      .populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' })
       .lean();
     // Populate tenant info for each unit
     for (const property of properties) {
@@ -170,8 +170,56 @@ const getPropertyById = async (req, res) => {
 const updateProperty = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    const property = await Property.findByIdAndUpdate(id, updates, { new: true })
+    let { name, address, description, units } = req.body;
+    if (typeof units === 'string') {
+      units = JSON.parse(units);
+    }
+    // Handle file uploads and generate thumbnails
+    let profilePic, profilePicThumb, gallery = [], galleryThumbs = [];
+    const sharp = require('sharp');
+    const path = require('path');
+    const fs = require('fs');
+    const makeThumb = async (origPath) => {
+      try {
+        if (!fs.existsSync(origPath)) return null;
+        const ext = path.extname(origPath);
+        const base = path.basename(origPath, ext);
+        const thumbDir = path.join(path.dirname(origPath), 'thumbs');
+        if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+        const thumbPath = path.join(thumbDir, `${base}_thumb${ext}`);
+        await sharp(origPath)
+          .resize(300, 300, { fit: 'inside' })
+          .toFile(thumbPath);
+        return thumbPath.replace(/\\/g, '/');
+      } catch (err) { return null; }
+    };
+    try {
+      if (req.files && req.files.profilePic) {
+        profilePic = req.files.profilePic[0].path.replace(/\\/g, '/');
+        if (fs.existsSync(req.files.profilePic[0].path)) {
+          profilePicThumb = await makeThumb(req.files.profilePic[0].path);
+        }
+      }
+      if (req.files && req.files.gallery) {
+        gallery = req.files.gallery.map(file => file.path.replace(/\\/g, '/'));
+        for (const file of req.files.gallery) {
+          if (fs.existsSync(file.path)) {
+            galleryThumbs.push(await makeThumb(file.path));
+          }
+        }
+      }
+    } catch (err) {}
+    // Only update fields that are provided
+    const updateFields = {};
+    if (name !== undefined) updateFields.name = name;
+    if (address !== undefined) updateFields.address = address;
+    if (description !== undefined) updateFields.description = description;
+    if (units !== undefined) updateFields.units = units;
+    if (profilePic) updateFields.profilePic = profilePic;
+    if (profilePicThumb) updateFields.profilePicThumb = profilePicThumb;
+    if (gallery.length > 0) updateFields.gallery = gallery;
+    if (galleryThumbs.length > 0) updateFields.galleryThumbs = galleryThumbs;
+    const property = await Property.findByIdAndUpdate(id, updateFields, { new: true })
       .populate({
         path: 'tenants.tenant',
         model: 'Tenant',
@@ -218,7 +266,7 @@ const removeTenantFromProperty = async (req, res) => {
 
 // Assign caretaker to property
 const assignCaretakerToProperty = async (req, res) => {
-  console.log('assignCaretakerToProperty called', req.params, req.body);
+  // console.log('assignCaretakerToProperty called', req.params, req.body); // Removed debug log
   try {
     const { id } = req.params; // propertyId
     const { caretakerId } = req.body;
@@ -231,6 +279,19 @@ const assignCaretakerToProperty = async (req, res) => {
       update,
       { new: true }
     ).populate({ path: 'caretaker', model: 'Caretaker', select: 'firstName lastName email phone' });
+    // Log activity: caretaker assigned to property
+    try {
+      if (caretakerId) {
+        const Activity = require('../models/Activity');
+        const caretaker = await require('../models/Caretaker').findById(caretakerId);
+        await Activity.create({
+          landlord: property.landlord,
+          type: 'caretaker_assigned',
+          message: `Caretaker ${caretaker.firstName} ${caretaker.lastName} assigned to ${property.name}`,
+          data: { caretakerId, propertyId: property._id }
+        });
+      }
+    } catch (err) { /* ignore activity log errors */ }
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     res.json({ property });
   } catch (err) {
@@ -275,6 +336,17 @@ const assignTenantToUnit = async (req, res) => {
           unitLabel: unit.label,
           status: 'Active',
         });
+        // Log activity: tenant assigned to property/unit
+        try {
+          const Activity = require('../models/Activity');
+          const tenant = await Tenant.findById(tenantId);
+          await Activity.create({
+            landlord: property.landlord,
+            type: 'tenant_assigned',
+            message: `Tenant ${tenant.firstName} ${tenant.lastName} assigned to ${property.name} (${unit.label})`,
+            data: { tenantId, propertyId: property._id, unitLabel: unit.label }
+          });
+        } catch (err) { /* ignore activity log errors */ }
         found = true;
         break;
       }

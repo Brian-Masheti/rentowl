@@ -74,3 +74,9 @@ $RECYCLE.BIN/
 # Other
 *.local
 
+# Ignore uploaded images and thumbnails
+server/uploads/*
+!server/uploads/.gitkeep
+server/uploads/thumbs/*
+!server/uploads/thumbs/.gitkeep
+

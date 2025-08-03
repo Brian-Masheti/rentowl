@@ -15,6 +15,139 @@ import {
   FaEyeSlash
 } from 'react-icons/fa';
 
+// --- RecentActivity component ---
+function RecentActivity() {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('token');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/landlord/activities`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setActivities(data.activities || []);
+      } catch (err) {
+        setError('Failed to fetch recent activity.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActivities();
+  }, []);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6 col-span-2">
+      <div className="font-bold text-lg mb-2 text-[#03A6A1]">Recent Activity</div>
+      {loading && <div className="text-gray-400">Loading...</div>}
+      {error && <div className="text-red-500">{error}</div>}
+      {!loading && !error && activities.length === 0 && (
+        <div className="text-gray-400">No recent activity yet.</div>
+      )}
+      {!loading && !error && activities.length > 0 && (
+        <ul className="divide-y divide-[#FFA673]/30">
+          {activities.map((a, idx) => (
+            <li key={a._id || idx} className="py-2 text-sm flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1]" />
+              <span>{a.message}</span>
+              <span className="text-gray-400 ml-auto" title={a.createdAt}>{formatTimeAgo(a.createdAt)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function formatTimeAgo(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return date.toLocaleDateString();
+}
+
+// --- CollapsibleCaretakerCard for mobile ---
+function CollapsibleCaretakerCard({ property, caretakers, selectedCaretaker, setSelectedCaretaker, assigning, setModalInfo, setShowModal, properties, bulkSelected, setBulkSelected }) {
+  const [open, setOpen] = useState(false);
+  const c = property.caretaker;
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2 border border-[#FFA673]/30 hover:shadow-xl hover:scale-[1.01] transition-all duration-200">
+      <button
+        className="flex items-center w-full gap-3 p-2 focus:outline-none"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-controls={`caretaker-card-${property.id}`}
+      >
+        <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-[#03A6A1]/20 text-[#03A6A1] font-bold text-base shadow-sm">
+          {property.name?.[0]}
+        </span>
+        <span className="flex-1 text-left">
+          <span className="text-[#03A6A1] font-bold text-base">{property.name}</span>
+          <span className="block text-xs text-gray-500">{property.address}</span>
+        </span>
+        <span className="text-xs text-[#FFA673] font-semibold">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && (
+        <div id={`caretaker-card-${property.id}`} className="flex flex-col gap-1 text-sm px-2 pb-2">
+          <div><span className="font-semibold text-[#FFA673]">Current Caretaker:</span> {c && (c.firstName || c.lastName)
+            ? `${c.firstName || ''} ${c.lastName || ''}`.trim()
+            : <span className="text-gray-400">None assigned</span>}</div>
+          <div><span className="font-semibold text-[#FFA673]">Caretaker Contact:</span> {c ? (<span><span className="font-semibold text-[#03A6A1]">{c.name}</span> <span className="text-xs text-gray-500">({c.email}, {c.phone})</span></span>) : <span className="text-gray-400">N/A</span>}</div>
+          <div><span className="font-semibold text-[#FFA673]">Caretaker Workload:</span> {c ? (<span>{properties.filter(p => p.caretaker && p.caretaker._id === c._id).length} propert{properties.filter(p => p.caretaker && p.caretaker._id === c._id).length === 1 ? 'y' : 'ies'}</span>) : <span className="text-gray-400">N/A</span>}</div>
+          <div className="flex flex-col gap-2 mt-2">
+            <select
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-2 py-1 focus:ring-2 focus:ring-[#FFA673]"
+              value={selectedCaretaker[property.id] || ''}
+              onChange={e => setSelectedCaretaker(s => ({ ...s, [property.id]: e.target.value }))}
+              style={{ outline: 'none', boxShadow: 'none' }}
+            >
+              <option value="">Select caretaker...</option>
+              {caretakers.filter(c => c.isActive).map(c => (
+                <option key={c.id} value={c.id}>{c.name} {c.isActive ? '' : '(Inactive)'}</option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                className={`px-3 py-1 rounded font-bold transition-colors duration-200 w-full ${!selectedCaretaker[property.id] || assigning === property.id ? 'bg-[#FFA673] text-white opacity-60 cursor-not-allowed' : 'bg-[#03A6A1] text-white hover:bg-[#FFA673]'}`}
+                disabled={!selectedCaretaker[property.id] || assigning === property.id}
+                onClick={() => {
+                  setModalInfo({ property, caretaker: caretakers.find(c => c.id === selectedCaretaker[property.id]), action: 'assign' });
+                  setShowModal(true);
+                }}
+              >
+                Assign
+              </button>
+              {property.caretaker && (
+                <button
+                  className="px-3 py-1 rounded font-bold border border-[#FFA673] text-[#FFA673] bg-white hover:bg-[#FFA673] hover:text-white transition-colors duration-200 w-full"
+                  disabled={assigning === property.id}
+                  onClick={() => {
+                    setModalInfo({ property, action: 'unassign' });
+                    setShowModal(true);
+                  }}
+                >
+                  Unassign
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- AssignCaretakerToPropertySection component ---
 function AssignCaretakerToPropertySection({ properties, refresh }) {
   const [search, setSearch] = useState('');
@@ -22,6 +155,16 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
   const [assigning, setAssigning] = useState(null); // propertyId being assigned
   const [selectedCaretaker, setSelectedCaretaker] = useState({}); // propertyId -> caretakerId
   const [showModal, setShowModal] = useState(false);
+
+  // Close caretaker modal on Escape key
+  useEffect(() => {
+    if (!showModal) return;
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setShowModal(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showModal]);
   const [modalInfo, setModalInfo] = useState({}); // { property, caretaker }
   const [caretakerFilter, setCaretakerFilter] = useState('');
   const [sortBy, setSortBy] = useState('');
@@ -172,7 +315,8 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
           Assign Selected
         </button>
       </div>
-      <div className="overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="overflow-x-auto md:block hidden">
         <table className="min-w-full border border-[#FFA673]/20 rounded-2xl bg-white/90 shadow-lg">
           <thead>
             <tr className="bg-[#FFF8F0] text-[#03A6A1]">
@@ -283,6 +427,24 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
           </tbody>
         </table>
       </div>
+      {/* Mobile: Collapsible Cards */}
+      <div className="md:hidden flex flex-col gap-4">
+        {filtered.map(property => (
+          <CollapsibleCaretakerCard
+            key={property.id}
+            property={property}
+            caretakers={caretakers}
+            selectedCaretaker={selectedCaretaker}
+            setSelectedCaretaker={setSelectedCaretaker}
+            assigning={assigning}
+            setModalInfo={setModalInfo}
+            setShowModal={setShowModal}
+            properties={properties}
+            bulkSelected={bulkSelected}
+            setBulkSelected={setBulkSelected}
+          />
+        ))}
+      </div>
       {/* Confirmation Modal */}
             {showBulkModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -338,8 +500,8 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
       )}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-md w-full relative">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700" onClick={() => setShowModal(false)}>&times;</button>
+          <div className="bg-white rounded-lg p-3 md:p-6 shadow-lg w-full max-w-xs md:max-w-md relative text-sm md:text-base">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl md:text-2xl font-bold" onClick={() => setShowModal(false)}>&times;</button>
             {/* Caretaker Profile Quick View Modal */}
             {modalInfo.action === 'profile' ? (
               <>
@@ -360,8 +522,7 @@ function AssignCaretakerToPropertySection({ properties, refresh }) {
                     <li>2024-05-15: Unassigned from Property B</li>
                     <li>2024-05-01: Assigned to Property B</li>
                   </ul>
-                  <div className="text-gray-400 text-xs mt-1">(Static sample. Connect to backend for real log.)</div>
-                </div>
+                  </div>
                 <button
                   className="mt-4 px-4 py-2 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition-colors duration-200"
                   onClick={() => setShowModal(false)}
@@ -1001,16 +1162,7 @@ function LandlordDashboard() {
         <DashboardOverviewStats />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Recent Activity Feed */}
-          <div className="bg-white rounded-xl shadow-lg p-6 col-span-2">
-            <div className="font-bold text-lg mb-2 text-[#03A6A1]">Recent Activity</div>
-            <ul className="divide-y divide-[#FFA673]/30">
-              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1]" /> New tenant <b>Jane Doe</b> added to <b>Property A</b> <span className="text-gray-400 ml-auto">2 min ago</span></li>
-              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FFA673]" /> Maintenance request <b>#123</b> created <span className="text-gray-400 ml-auto">10 min ago</span></li>
-              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FF4F0F]" /> Payment <b>Ksh 12,000</b> received from <b>John Smith</b> <span className="text-gray-400 ml-auto">1 hr ago</span></li>
-              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#03A6A1]" /> Caretaker <b>Mary</b> resolved maintenance <b>#122</b> <span className="text-gray-400 ml-auto">2 hrs ago</span></li>
-              <li className="py-2 text-sm flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-[#FFA673]" /> Lease agreement signed by <b>Jane Doe</b> <span className="text-gray-400 ml-auto">Today</span></li>
-            </ul>
-          </div>
+          <RecentActivity />
           {/* Shortcuts to Reports */}
           <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
             <div className="font-bold text-lg mb-2 text-[#03A6A1]">Quick Reports</div>
