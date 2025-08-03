@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const NotificationPrefsSchema = new mongoose.Schema({
+  email: { type: Boolean, default: true },
+  sms: { type: Boolean, default: false },
+  inApp: { type: Boolean, default: true },
+}, { _id: false });
+
 const LandlordSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
@@ -11,6 +17,8 @@ const LandlordSchema = new mongoose.Schema({
   subscriptionDueDate: { type: Date },
   subscriptionStatus: { type: String },
   lastSubscriptionReminderSent: { type: Date },
+  notificationPrefs: { type: NotificationPrefsSchema, default: () => ({}) },
+  role: { type: String, default: 'landlord' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Landlord', LandlordSchema);

@@ -23,6 +23,8 @@ const errorHandler = require('./middleware/errorHandler');
 const setupSwagger = require('./swagger');
 require('dotenv').config();
 
+console.log('SERVER STARTED');
+
 // Connect to MongoDB
 connectDB();
 
@@ -64,6 +66,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/legal-documents', legalDocumentRoutes);
 app.use('/api/checklists', checkListRoutes);
 app.use('/api', dashboardRoutes);
+app.use('/api/profile', require('./routes/profileRoutes'));
 
 // Block expired landlords for all protected landlord routes
 app.use('/api/properties', checkLandlordSubscription);

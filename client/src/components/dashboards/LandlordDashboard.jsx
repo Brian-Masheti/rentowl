@@ -10,7 +10,9 @@ import {
   FaChartBar,
   FaBalanceScale,
   FaUserTie,
-  FaClipboardCheck
+  FaClipboardCheck,
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
 
 // --- AssignCaretakerToPropertySection component ---
@@ -468,32 +470,12 @@ import CaretakerManagement from '../caretakers/CaretakerManagement';
 import CaretakerActions from '../caretakers/actions/CaretakerActions';
 import LegalDocuments from '../legal/LegalDocuments';
 import CheckListManager from '../checklists/CheckListManager';
+import UnassignedTenantSelector from './UnassignedTenantSelector';
 const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
 const PropertyList = lazy(() => import('../properties/PropertyList'));
 
-const AddTenantSection = ({ properties, refresh }) => {
+const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
   const [modalOpen, setModalOpen] = useState(false);
-
-  // Handle tenant add/assign
-  const handleAddTenant = async (data) => {
-    const API_URL = import.meta.env.VITE_API_URL || '';
-    const token = localStorage.getItem('token');
-    console.log('Add Tenant payload:', data);
-    const res = await fetch(`${API_URL}/api/tenants`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.error('Add Tenant error:', errData);
-      throw new Error(errData.error || 'Failed to add tenant');
-    }
-    refresh();
-  };
 
   return (
     <>
@@ -508,15 +490,62 @@ const AddTenantSection = ({ properties, refresh }) => {
       {properties.length === 0 && (
         <div className="text-red-500 mt-2">No properties available. Please add a property first.</div>
       )}
-      <AssignUserToPropertyModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleAddTenant}
-        mode="add"
-        userType="tenant"
-        properties={properties}
-        themeColor="#03A6A1"
-      />
+      {/* Unassigned tenants table below the add tenant button/modal */}
+      <div className="mt-8">
+        <UnassignedTenantSelector
+          properties={properties}
+          onAssign={async (tenantId, propertyId, unitType, floor, unitLabel) => {
+            // Assign the tenant to the selected property/unit
+            const API_URL = import.meta.env.VITE_API_URL || '';
+            const token = localStorage.getItem('token');
+            try {
+              // Update the tenant's property/unit assignment in the backend
+              const assignRes = await fetch(`${API_URL}/api/properties/${propertyId}/units/${unitLabel}/assign-tenant`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ tenantId }),
+              });
+              if (!assignRes.ok) {
+                let errMsg = 'Unknown error';
+                try {
+                  const errData = await assignRes.json();
+                  errMsg = errData.error || errMsg;
+                } catch (jsonErr) {
+                  errMsg = 'Failed to parse error response';
+                }
+                alert('Failed to assign tenant: ' + errMsg);
+                console.error('Assign tenant error:', errMsg);
+                return;
+              }
+              // Refresh data so the tenant is removed from the unassigned list and appears in the assigned table
+              if (typeof window !== 'undefined' && window.location) {
+                window.location.reload(); // Force a full reload to update all tables immediately
+              }
+            } catch (err) {
+              alert('Failed to assign tenant: ' + (err.message || 'Unknown error'));
+              console.error('Assign tenant network error:', err);
+            }
+          }}
+        />
+      </div>
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-xl w-full relative">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={() => setModalOpen(false)}>&times;</button>
+            <UserAssignmentPanel
+              properties={properties}
+              onAssignTenant={async (data) => {
+                await onAssignTenant(data);
+                setModalOpen(false);
+                refresh();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -614,7 +643,9 @@ function DashboardOverviewStats() {
           const data = await res.json();
           setStats(data);
         }
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
     };
     fetchStats();
   }, []);
@@ -647,7 +678,9 @@ function PersonalizedWelcome() {
       try {
         const user = JSON.parse(userStr);
         name = user.firstName || user.username || 'User';
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
     }
   }
   return (
@@ -664,7 +697,7 @@ function LandlordDashboard() {
       const saved = localStorage.getItem('landlordSelectedSection');
       if (saved) return saved;
     }
-    return 'dashboard';
+    return 'add-tenant'; // Default to Add Tenant section
   };
   const [selectedSection, setSelectedSection] = useState(getInitialSection());
   const [properties, setProperties] = useState([]);
@@ -814,23 +847,9 @@ function LandlordDashboard() {
     'add-tenant': (
       <>
         <AddTenantSection properties={properties} refresh={refresh} />
-        {/* Main tenant table (all tenants) */}
-        <UserAssignmentPanel
-          userType="tenant"
-          properties={properties}
-          fetchUsers={async () => {
-            const API_URL = import.meta.env.VITE_API_URL || '';
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/api/tenants`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            return data.tenants || [];
-          }}
-          onAssign={handleBulkAssign}
-        />
         {/* Table of tenants already linked to properties */}
         <div className="mt-8">
+          <h3 className="font-bold text-[#03A6A1] mb-2">Assigned Tenants</h3>
           <ResponsiveTableOrCards
             columns={[
               { key: 'firstName', label: 'First Name' },
@@ -857,6 +876,9 @@ function LandlordDashboard() {
     'occupancy-vacancy': <FinancialReport type="occupancy" />, 
     'rent-arrears': <FinancialReport type="arrears" />, 
     profile: <p>View and edit your profile information.</p>,
+    settings: (
+      <ProfileSettings />
+    ),
   };
 
   return (
@@ -876,7 +898,7 @@ function LandlordDashboard() {
         <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
           {/* Sticky nav bar for desktop/tablet */}
           <StickyNavBar
-            label={(landlordMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Landlord Dashboard')}
+            label={selectedSection === 'settings' ? 'Profile & Settings' : (landlordMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Landlord Dashboard')}
             icon={landlordMenu.find(item => item.key === selectedSection)?.icon}
           />
           <div style={{ marginTop: 16 }}>
@@ -885,6 +907,190 @@ function LandlordDashboard() {
         </main>
       </div>
     </>
+  );
+}
+
+// Profile & Settings component
+function ProfileSettings() {
+  const [profile, setProfile] = React.useState(null);
+  const [form, setForm] = React.useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = import.meta.env ? import.meta.env.VITE_API_URL : '';
+        const res = await fetch(`${API_URL || ''}/api/profile/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        const data = await res.json();
+        setProfile(data.user);
+        setForm({
+          firstName: data.user.firstName || '',
+          lastName: data.user.lastName || '',
+          email: data.user.email || '',
+          phone: data.user.phone || '',
+        });
+      } catch (err) {
+        setError('Could not load profile.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleChange = e => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async e => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env ? import.meta.env.VITE_API_URL : '';
+      const res = await fetch(`${API_URL || ''}/api/profile/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error('Failed to save profile');
+      setSuccess(true);
+    } catch (err) {
+      setError('Could not save profile.');
+      console.log(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const [pwForm, setPwForm] = React.useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwLoading, setPwLoading] = React.useState(false);
+  const [pwSuccess, setPwSuccess] = React.useState(false);
+  const [pwError, setPwError] = React.useState('');
+  const [showPw, setShowPw] = React.useState({ current: false, new: false, confirm: false });
+  if (loading) return <div className="text-gray-500">Loading profile...</div>;
+
+  const handlePwChange = e => {
+    setPwForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  };
+
+  const handlePwSubmit = async e => {
+    e.preventDefault();
+    setPwLoading(true);
+    setPwError('');
+    setPwSuccess(false);
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError('New passwords do not match.');
+      setPwLoading(false);
+      return;
+    }
+    if (pwForm.currentPassword === pwForm.newPassword) {
+      setPwError('New password cannot be the same as the current password.');
+      setPwLoading(false);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env ? import.meta.env.VITE_API_URL : '';
+      const res = await fetch(`${API_URL || ''}/api/profile/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+      });
+      if (!res.ok) throw new Error('Failed to change password');
+      setPwSuccess(true);
+      setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setPwError('Could not change password.');
+      console.error(err);
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-8 max-w-xl mx-auto">
+      <div className="text-2xl font-bold mb-6 text-[#03A6A1]">Profile & Settings</div>
+      <form onSubmit={handleSave} className="flex flex-col gap-4 mb-8">
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-semibold mb-1">First Name</label>
+            <input name="firstName" value={form.firstName} onChange={handleChange} className="border rounded px-3 py-2 w-full" required />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-semibold mb-1">Last Name</label>
+            <input name="lastName" value={form.lastName} onChange={handleChange} className="border rounded px-3 py-2 w-full" required />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">Email</label>
+          <input name="email" type="email" value={form.email} onChange={handleChange} className="border rounded px-3 py-2 w-full" required />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">Phone</label>
+          <input name="phone" value={form.phone} onChange={handleChange} className="border rounded px-3 py-2 w-full" required />
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button type="submit" className="bg-[#03A6A1] text-white font-bold py-2 px-6 rounded hover:bg-[#FFA673] transition" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          {success && <span className="text-green-600 font-semibold self-center">Profile updated!</span>}
+          {error && <span className="text-red-600 font-semibold self-center">{error}</span>}
+        </div>
+      </form>
+      <hr className="my-8" />
+      <div className="text-xl font-bold mb-4 text-[#03A6A1]">Change Password</div>
+      <form onSubmit={handlePwSubmit} className="flex flex-col gap-4">
+        <div>
+          <label className="block text-sm font-semibold mb-1">Current Password</label>
+          <div className="relative">
+            <input name="currentPassword" type={showPw.current ? 'text' : 'password'} value={pwForm.currentPassword} onChange={handlePwChange} className="border rounded px-3 py-2 w-full pr-10" required />
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" tabIndex={-1} onClick={() => setShowPw(p => ({ ...p, current: !p.current }))}>
+              {showPw.current ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">New Password</label>
+          <div className="relative">
+            <input name="newPassword" type={showPw.new ? 'text' : 'password'} value={pwForm.newPassword} onChange={handlePwChange} className="border rounded px-3 py-2 w-full pr-10" required />
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" tabIndex={-1} onClick={() => setShowPw(p => ({ ...p, new: !p.new }))}>
+              {showPw.new ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">Confirm New Password</label>
+          <div className="relative">
+            <input name="confirmPassword" type={showPw.confirm ? 'text' : 'password'} value={pwForm.confirmPassword} onChange={handlePwChange} className="border rounded px-3 py-2 w-full pr-10" required />
+            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" tabIndex={-1} onClick={() => setShowPw(p => ({ ...p, confirm: !p.confirm }))}>
+              {showPw.confirm ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button type="submit" className="bg-[#FFA673] text-white font-bold py-2 px-6 rounded hover:bg-[#03A6A1] transition" disabled={pwLoading}>{pwLoading ? 'Saving...' : 'Change Password'}</button>
+          {pwSuccess && <span className="text-green-600 font-semibold self-center">Password updated!</span>}
+          {pwError && <span className="text-red-600 font-semibold self-center">{pwError}</span>}
+        </div>
+      </form>
+    </div>
   );
 }
 

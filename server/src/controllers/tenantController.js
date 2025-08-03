@@ -31,6 +31,7 @@ const updateTenant = async (req, res) => {
 
 const createTenant = async (req, res) => {
   try {
+    console.log('CREATE TENANT PAYLOAD:', req.body);
     const { firstName, lastName, username, email, phone, password, propertyId, unitType } = req.body;
     if (!firstName || !lastName || !username || !email || !phone || !password) {
       return res.status(400).json({ error: 'All fields required.' });
@@ -51,7 +52,8 @@ const createTenant = async (req, res) => {
     });
     res.status(201).json(tenant);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create tenant.' });
+    console.error('CREATE TENANT ERROR:', err && err.stack ? err.stack : err);
+    res.status(500).json({ error: 'Failed to create tenant.', details: err && err.message ? err.message : err });
   }
 };
 

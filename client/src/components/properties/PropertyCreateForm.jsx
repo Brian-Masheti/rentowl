@@ -25,8 +25,17 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isUniform, setIsUniform] = useState('');
-  const [units, setUnits] = useState([
-    { type: '', count: '', rent: '' }
+  // Uniform
+  const [uniformType, setUniformType] = useState('');
+  const [uniformRent, setUniformRent] = useState('');
+  const [uniformFloors, setUniformFloors] = useState(1);
+  // Per-floor unit counts for uniform properties
+  const [uniformUnitsPerFloor, setUniformUnitsPerFloor] = useState([{ floor: 'Ground', count: '' }]);
+  // Fix: Add numFloors state for setNumFloors
+  const [numFloors, setNumFloors] = useState(1);
+  // Mixed
+  const [floors, setFloors] = useState([
+    { name: 'Ground', units: [{ type: '', count: '', rent: '' }] }
   ]);
 
   const API_URL = import.meta.env.VITE_API_URL || '';
@@ -52,16 +61,58 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
     setGalleryPreviews(validFiles.map(f => URL.createObjectURL(f)));
   };
 
-  const handleUnitChange = (idx, field, value) => {
-    setUnits(prev => prev.map((u, i) => i === idx ? { ...u, [field]: value } : u));
+  // Mixed logic
+  const handleFloorChange = (idx, field, value) => {
+    setFloors(prev => prev.map((f, i) => i === idx ? { ...f, [field]: value } : f));
   };
-
-  const handleAddUnit = () => {
-    setUnits(prev => [...prev, { type: '', count: '', rent: '' }]);
+  const handleUnitChange = (floorIdx, unitIdx, field, value) => {
+    setFloors(prev => prev.map((f, i) =>
+      i === floorIdx
+        ? { ...f, units: f.units.map((u, j) => j === unitIdx ? { ...u, [field]: value } : u) }
+        : f
+    ));
   };
-
-  const handleRemoveUnit = (idx) => {
-    setUnits(prev => prev.filter((_, i) => i !== idx));
+  const handleAddFloor = () => {
+    setFloors(prev => [...prev, { name: '', units: [{ type: '', count: '', rent: '' }] }]);
+  };
+  const handleRemoveFloor = (idx) => {
+    setFloors(prev => prev.filter((_, i) => i !== idx));
+  };
+  const handleAddUnit = (floorIdx) => {
+    setFloors(prev => prev.map((f, i) =>
+      i === floorIdx ? { ...f, units: [...f.units, { type: '', count: '', rent: '' }] } : f
+    ));
+  };
+  const handleRemoveUnit = (floorIdx, unitIdx) => {
+    setFloors(prev => prev.map((f, i) =>
+      i === floorIdx ? { ...f, units: f.units.filter((_, j) => j !== unitIdx) } : f
+    ));
+  };
+  // Map unit type to code
+  const typeCodeMap = {
+    'Bedsitter': 'B',
+    'Studio': 'S',
+    'Single Room': 'SR',
+    'Double Room': 'DR',
+    '1 Bedroom': '1B',
+    '2 Bedroom': '2B',
+    '3 Bedroom': '3B',
+    'Condominium': 'C',
+    'Loft': 'L',
+    'Other': 'O',
+  };
+  // Generate labels like GB1, G1B1, FB1, F1B1, 2FB1, 2F1B1, etc.
+  const generateUnitLabel = (floorName, type, idx) => {
+    let floorCode = '';
+    if (floorName.toLowerCase().startsWith('ground')) floorCode = 'G';
+    else if (floorName.toLowerCase().startsWith('first')) floorCode = 'F';
+    else {
+      const match = floorName.match(/(\d+)/);
+      if (match) floorCode = `${match[1]}F`;
+      else floorCode = floorName[0].toUpperCase();
+    }
+    const typeCode = typeCodeMap[type] || type[0].toUpperCase();
+    return `${floorCode}${typeCode}${idx + 1}`;
   };
 
   const handleSubmit = async (e) => {
@@ -74,19 +125,62 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
       setLoading(false);
       return;
     }
-    const filteredUnits = units.filter(u => u.type && u.count && u.rent);
-    if (filteredUnits.length === 0) {
-      setError('Please specify at least one unit type with count and rent.');
+    // Build grouped-by-floor structure for backend
+    let groupedUnits = [];
+    if (isUniform === 'yes') {
+      if (!uniformType || !uniformRent || !uniformFloors || uniformUnitsPerFloor.some(f => !f.count)) {
+        setError('Please specify unit type, rent, number of floors, and units per floor.');
+        setLoading(false);
+        return;
+      }
+      groupedUnits = uniformUnitsPerFloor.map((floorObj, f) => {
+        const floorName = floorObj.floor;
+        const unitsOnThisFloor = Number(floorObj.count);
+        const unitsArr = [];
+        for (let i = 0; i < unitsOnThisFloor; i++) {
+          unitsArr.push({
+            label: generateUnitLabel(floorName, uniformType, i),
+            type: uniformType,
+            rent: Number(uniformRent),
+            status: 'vacant',
+            tenant: null
+          });
+        }
+        return { floor: floorName, units: unitsArr };
+      }).filter(floorObj => floorObj.units.length > 0);
+    } else if (isUniform === 'no') {
+      groupedUnits = floors.map(floor => {
+        if (!floor.name) {
+          setError('Each floor must have a name.');
+          setLoading(false);
+          return null;
+        }
+        const unitsArr = [];
+        for (const unit of floor.units) {
+          if (!unit.type || !unit.count || !unit.rent) {
+            setError('Each unit must have a type, count, and rent.');
+            setLoading(false);
+            return null;
+          }
+          for (let i = 0; i < Number(unit.count); i++) {
+            unitsArr.push({
+              label: generateUnitLabel(floor.name, unit.type, i),
+              type: unit.type,
+              rent: Number(unit.rent),
+              status: 'vacant',
+              tenant: null
+            });
+          }
+        }
+        return { floor: floor.name, units: unitsArr };
+      }).filter(floorObj => floorObj && floorObj.units.length > 0);
+    } else {
+      setError('Please select if the property is uniform or mixed.');
       setLoading(false);
       return;
     }
-    const unitsPayload = filteredUnits.map(u => ({
-      type: u.type,
-      count: Number(u.count),
-      rent: Number(u.rent),
-    }));
-    if (unitsPayload.some(u => !u.type || isNaN(u.count) || isNaN(u.rent) || u.count <= 0 || u.rent < 0)) {
-      setError('Each unit must have a type, a positive count, and a non-negative rent.');
+    if (groupedUnits.length === 0) {
+      setError('Please specify at least one unit for the property.');
       setLoading(false);
       return;
     }
@@ -95,7 +189,7 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
       formData.append('name', name);
       formData.append('address', address);
       formData.append('description', description);
-      formData.append('units', JSON.stringify(unitsPayload));
+      formData.append('units', JSON.stringify(groupedUnits));
       if (profilePic) formData.append('profilePic', profilePic);
       gallery.forEach(file => formData.append('gallery', file));
       const token = localStorage.getItem('token');
@@ -118,9 +212,15 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
       setGallery([]);
       setProfilePicPreview(null);
       setGalleryPreviews([]);
-      setUnits([{ type: '', count: '', rent: '' }]);
+      setFloors([{ name: 'Ground', units: [{ type: '', count: '', rent: '' }] }]);
+      setNumFloors(1);
       setIsUniform('');
+      setUniformType('');
+      setUniformRent('');
+      setUniformFloors(1);
+      setUniformUnitsPerFloor([{ floor: 'Ground', count: '' }]);
       if (onSuccess) onSuccess();
+      if (onClose) onClose(); // Auto-close the form after success
     } catch (err) {
       setError(err.message || 'Failed to create property');
     } finally {
@@ -129,7 +229,7 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md max-w-2xl w-full mx-auto flex flex-col gap-4 relative">
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md max-w-4xl w-full mx-auto flex flex-col gap-4 relative max-h-[90vh] overflow-y-auto">
       {onClose && (
         <button
           type="button"
@@ -174,7 +274,9 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
               checked={isUniform === 'yes'}
               onChange={() => {
                 setIsUniform('yes');
-                setUnits([{ type: '', count: '', rent: '' }]);
+                setUniformType('');
+                setUniformRent('');
+                setUniformFloors(1);
               }}
               required
             />
@@ -188,7 +290,7 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
               checked={isUniform === 'no'}
               onChange={() => {
                 setIsUniform('no');
-                setUnits([{ type: '', count: '', rent: '' }]);
+                setFloors([{ name: 'Ground', units: [{ type: '', count: '', rent: '' }] }]);
               }}
               required
             />
@@ -196,16 +298,113 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
           </label>
         </div>
       </div>
-      {isUniform && (
+      {isUniform === 'yes' && (
         <div className="flex flex-col gap-2 border p-3 rounded bg-[#F8F8F8]">
-          {units.map((unit, index) => (
-            <div key={index} className="flex flex-wrap gap-2 items-end border-b pb-2 mb-2 last:border-b-0 last:pb-0 last:mb-0">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-semibold mb-1">Unit Type</label>
+              <select
+                className="border rounded px-2 py-1 w-full"
+                value={uniformType}
+                onChange={e => setUniformType(e.target.value)}
+                required
+              >
+                <option value="">Select type</option>
+                {DEFAULT_UNIT_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Rent per Unit</label>
+              <input
+                type="number"
+                className="border rounded px-2 py-1 w-full"
+                value={uniformRent}
+                onChange={e => setUniformRent(e.target.value)}
+                min={0}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Number of Floors</label>
+              <input
+                type="number"
+                className="border rounded px-2 py-1 w-full"
+                value={uniformFloors}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setUniformFloors(val);
+                  // Update per-floor units array
+                  setUniformUnitsPerFloor(prev => {
+                    const arr = [...prev];
+                    if (val > arr.length) {
+                      for (let i = arr.length; i < val; i++) {
+                        arr.push({ floor: i === 0 ? 'Ground' : i === 1 ? 'First' : `${i}F`, count: '' });
+                      }
+                    } else if (val < arr.length) {
+                      arr.length = val;
+                    }
+                    // Always update floor names
+                    for (let i = 0; i < arr.length; i++) {
+                      arr[i].floor = i === 0 ? 'Ground' : i === 1 ? 'First' : `${i}F`;
+                    }
+                    return arr;
+                  });
+                }}
+                min={1}
+                required
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-semibold mb-1">Units Per Floor</label>
+            <div className="flex flex-col gap-2">
+              {uniformUnitsPerFloor.map((f, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <span className="w-20 font-semibold">{f.floor}</span>
+                  <input
+                    type="number"
+                    className="border rounded px-2 py-1 w-32"
+                    value={f.count}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setUniformUnitsPerFloor(prev => prev.map((item, i) => i === idx ? { ...item, count: val } : item));
+                    }}
+                    min={1}
+                    required
+                  />
+                  <span>units</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {isUniform === 'no' && floors.map((floor, floorIdx) => (
+        <div key={floorIdx} className="border p-3 rounded bg-[#F8F8F8] mb-2">
+          <div className="flex gap-2 items-center mb-2">
+            <label className="block text-sm font-semibold">Floor Name/Label</label>
+            <input
+              type="text"
+              className="border rounded px-2 py-1"
+              value={floor.name}
+              onChange={e => handleFloorChange(floorIdx, 'name', e.target.value)}
+              placeholder={floorIdx === 0 ? 'Ground' : `Floor ${floorIdx + 1}`}
+              required
+            />
+            {floors.length > 1 && (
+              <button type="button" className="ml-2 text-[#FF4F0F] font-bold text-lg" onClick={() => handleRemoveFloor(floorIdx)} aria-label="Remove floor">&times;</button>
+            )}
+          </div>
+          {floor.units.map((unit, unitIdx) => (
+            <div key={unitIdx} className="flex flex-wrap gap-2 items-end mb-2">
               <div>
                 <label className="block text-sm font-semibold mb-1">Unit Type</label>
                 <select
                   className="border rounded px-2 py-1"
                   value={unit.type}
-                  onChange={e => handleUnitChange(index, 'type', e.target.value)}
+                  onChange={e => handleUnitChange(floorIdx, unitIdx, 'type', e.target.value)}
                   required
                 >
                   <option value="">Select type</option>
@@ -220,7 +419,7 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
                   type="number"
                   className="border rounded px-2 py-1"
                   value={unit.count}
-                  onChange={e => handleUnitChange(index, 'count', e.target.value)}
+                  onChange={e => handleUnitChange(floorIdx, unitIdx, 'count', e.target.value)}
                   min={1}
                   required
                 />
@@ -231,33 +430,25 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
                   type="number"
                   className="border rounded px-2 py-1"
                   value={unit.rent}
-                  onChange={e => handleUnitChange(index, 'rent', e.target.value)}
+                  onChange={e => handleUnitChange(floorIdx, unitIdx, 'rent', e.target.value)}
                   min={0}
                   required
                 />
               </div>
-              {isUniform === 'no' && units.length > 1 && (
-                <button
-                  type="button"
-                  className="ml-2 text-[#FF4F0F] font-bold text-lg"
-                  onClick={() => handleRemoveUnit(index)}
-                  aria-label="Remove unit type"
-                >
-                  &times;
-                </button>
+              {floor.units.length > 1 && (
+                <button type="button" className="ml-2 text-[#FF4F0F] font-bold text-lg" onClick={() => handleRemoveUnit(floorIdx, unitIdx)} aria-label="Remove unit">&times;</button>
               )}
             </div>
           ))}
-          {isUniform === 'no' && (
-            <button
-              type="button"
-              className="bg-[#03A6A1] text-white px-3 py-1 rounded hover:bg-[#FFA673] transition font-semibold mt-2"
-              onClick={handleAddUnit}
-            >
-              + Add Another Unit Type
-            </button>
-          )}
+          <button type="button" className="bg-[#03A6A1] text-white px-3 py-1 rounded hover:bg-[#FFA673] transition font-semibold mt-2" onClick={() => handleAddUnit(floorIdx)}>
+            + Add Another Unit
+          </button>
         </div>
+      ))}
+      {isUniform === 'no' && (
+        <button type="button" className="bg-[#FFA673] text-white px-3 py-1 rounded hover:bg-[#03A6A1] transition font-semibold mt-2" onClick={handleAddFloor}>
+          + Add Another Floor
+        </button>
       )}
       <div>
         <label className="block font-semibold mb-1">Description</label>
@@ -346,13 +537,15 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
           </div>
         )}
       </div>
-      <button
-        type="submit"
-        className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition"
-        disabled={loading}
-      >
-        {loading ? 'Creating...' : 'Create Property'}
-      </button>
+      <div className="sticky bottom-0 left-0 bg-white pt-4 pb-2 z-20 flex justify-end">
+        <button
+          type="submit"
+          className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition"
+          disabled={loading}
+        >
+          {loading ? 'Creating...' : 'Create Property'}
+        </button>
+      </div>
     </form>
   );
 };

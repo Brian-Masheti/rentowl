@@ -17,7 +17,10 @@ const TITLES = {
   occupancy: 'Occupancy vs. Vacancy',
 };
 
-const formatCurrency = (amount) => `Kshs ${amount.toLocaleString()}`;
+const formatCurrency = (amount) => {
+  if (amount == null || isNaN(amount)) return 'Kshs 0';
+  return `Kshs ${Number(amount).toLocaleString()}`;
+};
 
 const FinancialReport = ({ type }) => {
   const [data, setData] = useState(null);

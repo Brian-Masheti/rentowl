@@ -51,5 +51,9 @@ router.delete('/:id', requireAuth, requirePermission(permissions['property:delet
 
 // PATCH /api/properties/:propertyId/remove-tenant/:tenantId
 router.patch('/:propertyId/remove-tenant/:tenantId', requireAuth, requirePermission(permissions['property:update']), removeTenantFromProperty);
+// Assign tenant to unit
+router.put('/:propertyId/units/:unitLabel/assign-tenant', requireAuth, requirePermission(permissions['property:update']), require('../controllers/propertyController').assignTenantToUnit);
+// Remove tenant from unit
+router.put('/:propertyId/units/:unitLabel/remove-tenant', requireAuth, requirePermission(permissions['property:update']), require('../controllers/propertyController').removeTenantFromUnit);
 
 module.exports = router;

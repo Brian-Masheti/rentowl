@@ -1,35 +1,30 @@
 const mongoose = require('mongoose');
 
-const PropertyTenantSchema = new mongoose.Schema({
-  tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
-  unitType: { type: String, required: true },
-});
+const UnitSchema = new mongoose.Schema({
+  label: { type: String, required: true }, // e.g., G1, F1, 2F1
+  type: { type: String, required: true },  // e.g., studio, 1BR, 2BR
+  rent: { type: Number, required: true },
+  status: { type: String, enum: ['vacant', 'occupied'], default: 'vacant' },
+  tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
+}, { _id: false });
 
-const PropertySchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    address: { type: String, required: true },
-    landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    tenants: [PropertyTenantSchema],
-    status: { type: String, enum: ['occupied', 'vacant'], default: 'vacant' },
-    units: [
-      {
-        type: { type: String, required: true },
-        count: { type: Number, required: true },
-        rent: { type: Number, required: true },
-      }
-    ],
-    description: { type: String },
-    profilePic: { type: String },
-    profilePicThumb: { type: String },
-    gallery: [{ type: String }],
-    galleryThumbs: [{ type: String }],
-    rentDueDay: { type: Number, default: 5 },
-    gracePeriodDays: { type: Number, default: 3 },
-    isDeleted: { type: Boolean, default: false },
-  },
-  { timestamps: true }
-);
+const FloorSchema = new mongoose.Schema({
+  floor: { type: String, required: true }, // e.g., Ground, FirstFloor, 2Floor
+  units: [UnitSchema]
+}, { _id: false });
+
+const PropertySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  address: { type: String },
+  landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  units: [FloorSchema], // Now grouped by floor
+  description: { type: String },
+  tenants: { type: Array, default: [] },
+  profilePic: { type: String },
+  profilePicThumb: { type: String },
+  gallery: { type: Array, default: [] },
+  galleryThumbs: { type: Array, default: [] },
+  isDeleted: { type: Boolean, default: false },
+}, { timestamps: true });
 
 module.exports = mongoose.model('Property', PropertySchema);

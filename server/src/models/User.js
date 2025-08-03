@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const NotificationPrefsSchema = new mongoose.Schema({
+  email: { type: Boolean, default: true },
+  sms: { type: Boolean, default: false },
+  inApp: { type: Boolean, default: true },
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
@@ -23,6 +29,7 @@ const UserSchema = new mongoose.Schema(
     subscriptionDueDate: { type: Date },
     subscriptionStatus: { type: String, enum: ['active', 'expiring', 'grace', 'expired'], default: 'active' },
     lastSubscriptionReminderSent: { type: Date },
+    notificationPrefs: { type: NotificationPrefsSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
