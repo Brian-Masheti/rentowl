@@ -479,27 +479,14 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
 
   return (
     <>
-      {/* Floating button for desktop, static for mobile */}
-      <div>
-        <button
-          className="hidden md:fixed md:right-8 md:bottom-8 md:block z-50 bg-[#03A6A1] text-white font-bold rounded-full shadow-lg hover:bg-[#FFA673] transition text-lg px-6 py-4"
-          style={{ minWidth: 160, minHeight: 44 }}
-          onClick={() => setModalOpen(true)}
-          disabled={properties.length === 0}
-        >
-          + Add Tenant
-        </button>
-        <div className="block md:hidden mt-8 mb-2 flex justify-center">
-          <button
-            className="bg-[#03A6A1] text-white font-bold rounded-full shadow-lg hover:bg-[#FFA673] transition text-base px-5 py-2"
-            style={{ minWidth: 120, minHeight: 44 }}
-            onClick={() => setModalOpen(true)}
-            disabled={properties.length === 0}
-          >
-            + Add Tenant
-          </button>
-        </div>
-      </div>
+      <button
+        className="fixed right-4 bottom-0 md:bottom-8 md:right-8 z-50 bg-[#03A6A1] text-white font-bold rounded-full shadow-lg hover:bg-[#FFA673] transition text-base md:text-lg px-5 py-2 md:px-6 md:py-4"
+        style={{ minWidth: 120, minHeight: 44 }}
+        onClick={() => setModalOpen(true)}
+        disabled={properties.length === 0}
+      >
+        + Add Tenant
+      </button>
       {properties.length === 0 && (
         <div className="text-red-500 mt-2">No properties available. Please add a property first.</div>
       )}
