@@ -248,6 +248,16 @@ const assignTenantToUnit = async (req, res) => {
     const property = await Property.findById(propertyId);
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     let found = false;
+    // First, vacate any unit in this property currently assigned to this tenant
+    for (const floorObj of property.units) {
+      for (const u of floorObj.units) {
+        if (u.tenant && u.tenant.toString() === tenantId) {
+          u.tenant = null;
+          u.status = 'vacant';
+        }
+      }
+    }
+    // Now, assign the tenant to the new unit
     for (const floorObj of property.units) {
       const unit = floorObj.units.find(u => u.label === unitLabel);
       if (unit) {
@@ -256,11 +266,13 @@ const assignTenantToUnit = async (req, res) => {
         }
         unit.tenant = tenantId;
         unit.status = 'occupied';
-        // Also update the tenant's property, unitType, and status
+        // Also update the tenant's property, unitType, floor, unitLabel, and status
         const Tenant = require('../models/Tenant');
         await Tenant.findByIdAndUpdate(tenantId, {
           property: property._id,
           unitType: unit.type,
+          floor: floorObj.floor,
+          unitLabel: unit.label,
           status: 'Active',
         });
         found = true;

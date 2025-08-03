@@ -479,19 +479,32 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
 
   return (
     <>
-      <button
-        className="fixed bottom-8 right-8 z-50 bg-[#03A6A1] text-white font-bold py-4 px-6 rounded-full shadow-lg hover:bg-[#FFA673] transition text-lg"
-        style={{ minWidth: 160 }}
-        onClick={() => setModalOpen(true)}
-        disabled={properties.length === 0}
-      >
-        + Add Tenant
-      </button>
+      {/* Floating button for desktop, static for mobile */}
+      <div>
+        <button
+          className="hidden md:fixed md:right-8 md:bottom-8 md:block z-50 bg-[#03A6A1] text-white font-bold rounded-full shadow-lg hover:bg-[#FFA673] transition text-lg px-6 py-4"
+          style={{ minWidth: 160, minHeight: 44 }}
+          onClick={() => setModalOpen(true)}
+          disabled={properties.length === 0}
+        >
+          + Add Tenant
+        </button>
+        <div className="block md:hidden mt-8 mb-2 flex justify-center">
+          <button
+            className="bg-[#03A6A1] text-white font-bold rounded-full shadow-lg hover:bg-[#FFA673] transition text-base px-5 py-2"
+            style={{ minWidth: 120, minHeight: 44 }}
+            onClick={() => setModalOpen(true)}
+            disabled={properties.length === 0}
+          >
+            + Add Tenant
+          </button>
+        </div>
+      </div>
       {properties.length === 0 && (
         <div className="text-red-500 mt-2">No properties available. Please add a property first.</div>
       )}
       {/* Unassigned tenants table below the add tenant button/modal */}
-      <div className="mt-8">
+      <div className="mt-8 mb-32 md:mb-8">
         <UnassignedTenantSelector
           properties={properties}
           onAssign={async (tenantId, propertyId, unitType, floor, unitLabel) => {
@@ -538,7 +551,27 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
             <UserAssignmentPanel
               properties={properties}
               onAssignTenant={async (data) => {
-                await onAssignTenant(data);
+                // POST to backend to create tenant
+                const API_URL = import.meta.env.VITE_API_URL || '';
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/tenants`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify(data),
+                });
+                if (!res.ok) {
+                  let errMsg = 'Unknown error';
+                  try {
+                    const errData = await res.json();
+                    errMsg = errData.error || errMsg;
+                  } catch (jsonErr) {
+                    errMsg = 'Failed to parse error response';
+                  }
+                  throw new Error(errMsg);
+                }
                 setModalOpen(false);
                 refresh();
               }}
@@ -704,6 +737,156 @@ function LandlordDashboard() {
   const [tenants, setTenants] = useState([]);
   const [refreshToken, setRefreshToken] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterProperty, setFilterProperty] = useState('');
+
+
+  // State for modals
+  const [editTenant, setEditTenant] = useState(null);
+  const [deactivateTenant, setDeactivateTenant] = useState(null);
+  const [drawerTenant, setDrawerTenant] = useState(null);
+
+  // Close tenant drawer on Escape key
+  useEffect(() => {
+    if (!drawerTenant) return;
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setDrawerTenant(null);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [drawerTenant]);
+
+  // Filtered tenants for display and assignment
+  const PAGE_SIZE = 10;
+  const [tenantPage, setTenantPage] = useState(1);
+  const filteredTenants = tenants
+    .filter(t => t.propertyName)
+    .filter(t =>
+      (!search || t.firstName?.toLowerCase().includes(search.toLowerCase()) || t.lastName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()))
+      && (!filterStatus || t.status === filterStatus)
+      && (!filterProperty || t.propertyName === filterProperty)
+    );
+  const totalTenantPages = Math.ceil(filteredTenants.length / PAGE_SIZE) || 1;
+  const paginatedTenants = filteredTenants.slice((tenantPage - 1) * PAGE_SIZE, tenantPage * PAGE_SIZE);
+
+  // Export to CSV function
+  function exportToCSV() {
+    const visibleTenants = tenants.filter(t => t.propertyName)
+      .filter(t =>
+        (!search || t.firstName?.toLowerCase().includes(search.toLowerCase()) || t.lastName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()))
+        && (!filterStatus || t.status === filterStatus)
+        && (!filterProperty || t.propertyName === filterProperty)
+      );
+    const rows = [
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Property', 'Unit Type', 'Floor', 'Room/Unit', 'Status'],
+      ...visibleTenants.map(t => [
+        t.firstName, t.lastName, t.email, t.phone, t.propertyName, t.unitType, t.floor, t.unitLabel, t.status
+      ])
+    ];
+    const csvContent = rows.map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tenants.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Placeholder modal components and handlers
+  function EditTenantModal({ tenant, onClose, onSave }) {
+    // Find the property for this tenant
+    const property = properties.find(p => p.name === tenant.propertyName || p.id === tenant.propertyId || (tenant.property && p.id === tenant.property._id));
+    // Get all floors and all units/rooms for this property
+    const floors = property ? (property.units || []).map(floorObj => floorObj.floor) : [];
+    const [form, setForm] = useState({
+      firstName: tenant.firstName,
+      lastName: tenant.lastName,
+      email: tenant.email,
+      phone: tenant.phone,
+      floor: tenant.floor || '',
+      unitLabel: tenant.unitLabel || '',
+    });
+    const [success, setSuccess] = useState(false);
+    // Get units for selected floor
+    const floorObj = property && form.floor ? (property.units || []).find(f => f.floor === form.floor) : null;
+    // Only show vacant units or the tenant's current unit
+    const availableUnits = floorObj ? (floorObj.units || []).filter(u => u.status === 'vacant' || u.label === tenant.unitLabel) : [];
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+          <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={onClose}>&times;</button>
+          <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">Edit Tenant</h2>
+          <form onSubmit={e => { e.preventDefault(); setSuccess(true); setTimeout(() => { setSuccess(false); onSave(form); }, 1000); }} className="flex flex-col gap-3">
+            <div>
+              <label className="block font-semibold mb-1">First Name</label>
+              <input className="border rounded px-3 py-2 w-full" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Last Name</label>
+              <input className="border rounded px-3 py-2 w-full" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Email</label>
+              <input className="border rounded px-3 py-2 w-full" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Phone</label>
+              <input className="border rounded px-3 py-2 w-full" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Floor</label>
+              <select className="border rounded px-3 py-2 w-full" value={form.floor} onChange={e => setForm(f => ({ ...f, floor: e.target.value, unitLabel: '' }))} required>
+                <option value="">Select Floor</option>
+                {floors.map(floor => (
+                  <option key={floor} value={floor}>{floor}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold mb-1">Room/Unit</label>
+              <select className="border rounded px-3 py-2 w-full" value={form.unitLabel} onChange={e => setForm(f => ({ ...f, unitLabel: e.target.value }))} required disabled={!form.floor}>
+                <option value="">Select Room/Unit</option>
+                {availableUnits.map(u => (
+                  <option key={u.label} value={u.label}>{u.label} ({u.type})</option>
+                ))}
+              </select>
+            </div>
+            <button type="submit" className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition mt-2">Save</button>
+            {success && <div className="text-green-600 text-sm mt-2">Tenant updated successfully!</div>}
+          </form>
+        </div>
+      </div>
+    );
+  }
+  function handleEditTenantSave(updated) {
+    setEditTenant(null);
+    // TODO: Call backend to update tenant, then refresh
+  }
+  function DeactivateTenantModal({ tenant, onClose, onConfirm }) {
+    const [success, setSuccess] = useState(false);
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+          <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={onClose}>&times;</button>
+          <h2 className="text-xl font-bold mb-4 text-[#FF4F0F]">Deactivate Tenant</h2>
+          <p className="mb-4">Are you sure you want to deactivate <b>{tenant.firstName} {tenant.lastName}</b>? This will mark them as inactive.</p>
+          <div className="flex gap-2 justify-end">
+            <button className="px-4 py-2 rounded border border-[#FFA673] text-[#FFA673] bg-white font-bold hover:bg-[#FFA673] hover:text-white transition" onClick={onClose}>Cancel</button>
+            <button className="bg-[#FF4F0F] text-white px-4 py-2 rounded font-bold hover:bg-[#FFA673] transition" onClick={() => { setSuccess(true); setTimeout(() => { setSuccess(false); onConfirm(tenant); }, 1000); }}>Deactivate</button>
+          </div>
+          {success && <div className="text-green-600 text-sm mt-4">Tenant deactivated successfully!</div>}
+        </div>
+      </div>
+    );
+  }
+  function handleDeactivateTenantConfirm(tenant) {
+    setDeactivateTenant(null);
+    // TODO: Call backend to deactivate tenant, then refresh
+  }
 
   // Save selected section to localStorage whenever it changes
   useEffect(() => {
@@ -755,17 +938,41 @@ function LandlordDashboard() {
           }))
         );
         const tenantData = await tenantRes.json();
-        setTenants((tenantData.tenants || []).map((t) => ({
-          id: t._id,
-          firstName: t.firstName,
-          lastName: t.lastName,
-          email: t.email,
-          phone: t.phone,
-          propertyName: t.propertyName || (t.property && t.property.name) || '',
-          unitType: t.unitType || '',
-          deleted: t.deleted || false,
-          status: t.status || (t.deleted ? 'Deleted' : 'Active'),
-        })));
+        setTenants((tenantData.tenants || []).map((t) => {
+          // Find property and unit for assigned tenants
+          let floor = '';
+          let unitLabel = '';
+          if (t.propertyName || (t.property && t.property.name)) {
+            const prop = propertyArray.find(
+              p => p.name === t.propertyName || p._id === t.propertyId || (t.property && p._id === t.property._id)
+            );
+            if (prop && prop.units) {
+              for (const floorObj of prop.units) {
+                if (floorObj.units) {
+                  const unit = floorObj.units.find(u => u.label === t.unitLabel || u.label === t.unitLabel || u.tenant === t._id);
+                  if (unit) {
+                    floor = floorObj.floor;
+                    unitLabel = unit.label;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          return {
+            id: t._id,
+            firstName: t.firstName,
+            lastName: t.lastName,
+            email: t.email,
+            phone: t.phone,
+            propertyName: t.propertyName || (t.property && t.property.name) || '',
+            unitType: t.unitType || '',
+            floor: floor || t.floor || '',
+            unitLabel: unitLabel || t.unitLabel || '',
+            deleted: t.deleted || false,
+            status: t.status || (t.deleted ? 'Deleted' : 'Active'),
+          };
+        }));
       } catch (err) {
         setProperties([]);
         setTenants([]);
@@ -850,20 +1057,273 @@ function LandlordDashboard() {
         {/* Table of tenants already linked to properties */}
         <div className="mt-8">
           <h3 className="font-bold text-[#03A6A1] mb-2">Assigned Tenants</h3>
-          <ResponsiveTableOrCards
-            columns={[
-              { key: 'firstName', label: 'First Name' },
-              { key: 'lastName', label: 'Last Name' },
-              { key: 'email', label: 'Email' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'propertyName', label: 'Property' },
-              { key: 'unitType', label: 'Unit Type' },
-              { key: 'status', label: 'Status', render: (u) => u.status || 'Active' },
-            ]}
-            data={tenants.filter(t => t.propertyName)}
-            keyField="id"
-            cardTitle={u => `${u.firstName} ${u.lastName}`}
-          />
+          {/* Search, filter, and pagination controls */}
+          <div className="flex flex-wrap gap-2 mb-4 items-center">
+            <input
+              type="text"
+              placeholder="Search tenants..."
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/3 focus:ring-2 focus:ring-[#FFA673]"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ outline: 'none', boxShadow: 'none' }}
+            />
+            <select
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/4 focus:ring-2 focus:ring-[#FFA673]"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Deleted">Deleted</option>
+            </select>
+            <select
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/4 focus:ring-2 focus:ring-[#FFA673]"
+              value={filterProperty}
+              onChange={e => setFilterProperty(e.target.value)}
+            >
+              <option value="">All Properties</option>
+              {properties.map(p => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+            <button
+              className="ml-auto bg-[#FFA673] text-white font-bold px-4 py-2 rounded hover:bg-[#03A6A1] transition"
+              onClick={exportToCSV}
+              type="button"
+            >
+              Export CSV
+            </button>
+          </div>
+          {/* RHS Drawer for tenant details */}
+          {drawerTenant && (() => {
+            // Use floor and unitLabel directly from tenant document
+            const property = properties.find(p => p.name === drawerTenant.propertyName || p.id === drawerTenant.propertyId || (drawerTenant.property && p.id === drawerTenant.property._id));
+            return (
+            <div className="fixed inset-0 z-50 flex">
+              <div className="flex-1" onClick={() => setDrawerTenant(null)} style={{ background: 'rgba(0,0,0,0.2)' }} />
+              <div className="w-full sm:w-[400px] max-w-full h-full bg-[#FFF8F0] shadow-2xl p-6 overflow-y-auto animate-slideInRight relative border-l-4 border-[#03A6A1]">
+                <button className="absolute top-4 right-4 text-[#FFA673] hover:text-[#03A6A1] text-2xl font-bold" onClick={() => setDrawerTenant(null)}>&times;</button>
+                <h2 className="text-2xl font-bold mb-4 text-[#03A6A1]">Tenant Details</h2>
+                <div className="flex flex-col items-center mb-4">
+                  <span className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-[#03A6A1]/10 text-[#03A6A1] font-bold text-3xl shadow mb-2">
+                    {drawerTenant.firstName?.[0]}{drawerTenant.lastName?.[0]}
+                  </span>
+                  <div className="font-bold text-xl text-[#03A6A1] mb-1">{drawerTenant.firstName} {drawerTenant.lastName}</div>
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    {drawerTenant.email && <div className="text-[#23272F] text-sm">Email: <span className="font-semibold">{drawerTenant.email}</span></div>}
+                    {drawerTenant.phone && <div className="text-[#23272F] text-sm">Phone: <span className="font-semibold">{drawerTenant.phone}</span></div>}
+                    <div className="text-sm">
+                      Status: <span className={`font-semibold px-2 py-1 rounded-full text-xs ml-1 ${drawerTenant.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{drawerTenant.status || 'Active'}</span>
+                    </div>
+                  </div>
+                </div>
+                <hr className="my-4 border-[#FFA673]/40" />
+                <div className="mb-4">
+                  <div className="font-semibold text-[#FFA673] mb-2 text-lg">Property Assignment</div>
+                  <div className="flex flex-col gap-2">
+                    {property && <div className="text-[#23272F] text-sm flex items-center">Property: <span className="font-semibold ml-1" title={property.name}>{property.name}</span></div>}
+                    <div className="text-[#23272F] text-sm flex items-center">Unit Type: <span className="font-semibold ml-1">{drawerTenant.unitType || '-'}</span></div>
+                    <div className="text-[#23272F] text-sm flex items-center">Floor: <span className="font-semibold ml-1">{drawerTenant.floor || '-'}</span></div>
+                    <div className="text-[#23272F] text-sm flex items-center">Room/Unit: <span className="font-semibold ml-1">{drawerTenant.unitLabel || '-'}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+          {/* Modals for edit and deactivate */}
+          {editTenant && (
+            <EditTenantModal
+              tenant={editTenant}
+              onClose={() => setEditTenant(null)}
+              onSave={handleEditTenantSave}
+            />
+          )}
+          {deactivateTenant && (
+            <DeactivateTenantModal
+              tenant={deactivateTenant}
+              onClose={() => setDeactivateTenant(null)}
+              onConfirm={handleDeactivateTenantConfirm}
+            />
+          )}
+          {/* Responsive: Table for desktop, cards for mobile */}
+          <div className="hidden md:block rounded-lg shadow-lg bg-white/90">
+            <table className="min-w-full">
+              <thead className="bg-[#03A6A1]/90 text-white sticky top-0 z-10">
+                <tr>
+                  <th className="py-3 px-4 text-left rounded-tl-lg">#</th>
+                  <th className="py-3 px-4 text-left">Tenant</th>
+                  <th className="py-3 px-4 text-left">Contact</th>
+                  <th className="py-3 px-4 text-left">Property</th>
+                  <th className="py-3 px-4 text-left">Unit Type</th>
+                  <th className="py-3 px-4 text-left">Floor</th>
+                  <th className="py-3 px-4 text-left">Room/Unit</th>
+                  <th className="py-3 px-4 text-left">Status</th>
+                  <th className="py-3 px-4 text-left rounded-tr-lg">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedTenants.map((u, idx) => (
+                  <tr
+                    key={u.id}
+                    className={`transition-all duration-200 ${idx % 2 === 0 ? 'bg-[#FFF8F0]' : 'bg-white'} hover:shadow-lg hover:scale-[1.01] border-b border-[#FFA673]/20`}
+                  >
+                    <td className="py-3 px-4 font-semibold text-gray-500">{(tenantPage - 1) * PAGE_SIZE + idx + 1}</td>
+                    <td className="py-3 px-4 flex items-center gap-3">
+                      <span className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#03A6A1]/20 text-[#03A6A1] font-bold text-base shadow-sm">
+                        {u.firstName?.[0]}{u.lastName?.[0]}
+                      </span>
+                      <button className="text-[#03A6A1] font-bold underline hover:text-[#FFA673]" onClick={() => setDrawerTenant(u)}>{u.firstName} {u.lastName}</button>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col gap-1">
+                        <a href={`mailto:${u.email}`} className="flex items-center gap-2 text-[#03A6A1] hover:text-[#FFA673] font-medium" title={u.email}>
+                          {/* Envelope icon */}
+                          <svg className="w-4 h-4" fill="none" stroke="#03A6A1" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+                          {u.email}
+                        </a>
+                        <a href={`tel:${u.phone}`} className="flex items-center gap-2 text-[#FFA673] hover:text-[#03A6A1] font-medium" title={u.phone}>
+                          {/* Phone icon */}
+                          <svg className="w-4 h-4" fill="none" stroke="#FFA673" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M22 16.92V19a2 2 0 01-2 2A19.72 19.72 0 013 5a2 2 0 012-2h2.09a2 2 0 012 1.72c.13.81.36 1.6.7 2.34a2 2 0 01-.45 2.11l-.27.27a16 16 0 006.29 6.29l.27-.27a2 2 0 012.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0122 16.92z"/></svg>
+                          {u.phone}
+                        </a>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="group relative cursor-pointer">
+                        <span className="hover:underline" title={u.propertyName}>{u.propertyName}</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block bg-[#03A6A1] text-white text-xs rounded px-2 py-1 shadow-lg z-20 whitespace-nowrap">{u.propertyName}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">{u.unitType}</td>
+                    <td className="py-3 px-4">{u.floor || <span className="text-gray-400">-</span>}</td>
+                    <td className="py-3 px-4">{u.unitLabel || <span className="text-gray-400">-</span>}</td>
+                    <td className="py-3 px-4">
+                    <span
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
+                    title={u.status === 'Active' ? 'Tenant is active' : 'Tenant is inactive'}
+                    >
+                    {u.status === 'Active' ? (
+                    <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
+                    ) : (
+                    <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
+                    )}
+                    {u.status || 'Active'}
+                    </span>
+                    </td>
+                    <td className="py-3 px-4">
+                    <div className="flex gap-3 items-center">
+                    <button
+                    title="Deactivate Tenant"
+                    className="text-[#FF4F0F] hover:text-[#FFA673] text-lg transition-colors duration-150"
+                    onClick={() => setDeactivateTenant(u)}
+                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    <button
+                    title="Edit Tenant"
+                    className="text-[#03A6A1] hover:text-[#FFA673] text-lg transition-colors duration-150"
+                    onClick={() => setEditTenant(u)}
+                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
+                    </button>
+                    </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Pagination */}
+            <div className="flex justify-center gap-2 mt-4">
+              <button
+                className="px-3 py-1 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition disabled:opacity-50"
+                onClick={() => setTenantPage(p => Math.max(1, p - 1))}
+                disabled={tenantPage === 1}
+              >
+                Prev
+              </button>
+              <span className="px-3 py-1 font-semibold text-[#03A6A1]">Page {tenantPage} of {totalTenantPages}</span>
+              <button
+                className="px-3 py-1 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition disabled:opacity-50"
+                onClick={() => setTenantPage(p => Math.min(totalTenantPages, p + 1))}
+                disabled={tenantPage === totalTenantPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          {/* Mobile: Cards */}
+          <div className="md:hidden flex flex-col gap-4">
+            {paginatedTenants.map((u, idx) => (
+              <div
+                key={u.id}
+                className="bg-white rounded-xl shadow-lg p-4 flex flex-col gap-2 border border-[#FFA673]/30 hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-[#03A6A1]/20 text-[#03A6A1] font-bold text-lg shadow-sm">
+                    {u.firstName?.[0]}{u.lastName?.[0]}
+                  </span>
+                  <div className="flex-1">
+                    <button className="text-[#03A6A1] font-bold underline hover:text-[#FFA673] text-lg" onClick={() => setDrawerTenant(u)}>{u.firstName} {u.lastName}</button>
+                    <div className="text-xs text-gray-500">{u.email}</div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
+                    title={u.status === 'Active' ? 'Tenant is active' : 'Tenant is inactive'}
+                  >
+                    {u.status === 'Active' ? (
+                      <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
+                    ) : (
+                      <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
+                    )}
+                    {u.status || 'Active'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <div><span className="font-semibold text-[#FFA673]">Phone:</span> {u.phone}</div>
+                  <div><span className="font-semibold text-[#FFA673]">Property:</span> <span title={u.propertyName}>{u.propertyName}</span></div>
+                  <div><span className="font-semibold text-[#FFA673]">Unit Type:</span> {u.unitType}</div>
+                  <div><span className="font-semibold text-[#03A6A1]">Floor:</span> {u.floor || <span className="text-gray-400">-</span>}</div>
+                  <div><span className="font-semibold text-[#FFA673]">Room/Unit:</span> {u.unitLabel || <span className="text-gray-400">-</span>}</div>
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <button
+                    title="Edit Tenant"
+                    className="text-[#03A6A1] hover:text-[#FFA673] text-lg transition-colors duration-150"
+                    onClick={() => setEditTenant(u)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
+                  </button>
+                  <button
+                    title="Deactivate Tenant"
+                    className="text-[#FF4F0F] hover:text-[#FFA673] text-lg transition-colors duration-150"
+                    onClick={() => setDeactivateTenant(u)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {/* Pagination */}
+            <div className="flex justify-center gap-2 mt-4">
+              <button
+                className="px-3 py-1 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition disabled:opacity-50"
+                onClick={() => setTenantPage(p => Math.max(1, p - 1))}
+                disabled={tenantPage === 1}
+              >
+                Prev
+              </button>
+              <span className="px-3 py-1 font-semibold text-[#03A6A1]">Page {tenantPage} of {totalTenantPages}</span>
+              <button
+                className="px-3 py-1 rounded bg-[#03A6A1] text-white font-bold hover:bg-[#FFA673] transition disabled:opacity-50"
+                onClick={() => setTenantPage(p => Math.min(totalTenantPages, p + 1))}
+                disabled={tenantPage === totalTenantPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </>
     ),

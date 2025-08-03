@@ -19,7 +19,6 @@ const PropertySchema = new mongoose.Schema({
   landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   units: [FloorSchema], // Now grouped by floor
   description: { type: String },
-  tenants: { type: Array, default: [] },
   profilePic: { type: String },
   profilePicThumb: { type: String },
   gallery: { type: Array, default: [] },

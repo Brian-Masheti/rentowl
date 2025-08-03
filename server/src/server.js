@@ -23,7 +23,7 @@ const errorHandler = require('./middleware/errorHandler');
 const setupSwagger = require('./swagger');
 require('dotenv').config();
 
-console.log('SERVER STARTED');
+// console.log('SERVER STARTED');
 
 // Connect to MongoDB
 connectDB();

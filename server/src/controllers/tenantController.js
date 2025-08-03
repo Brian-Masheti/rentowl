@@ -16,14 +16,59 @@ const getAllLandlordTenants = async (req, res) => {
 const updateTenant = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone, deleted } = req.body;
-    const updated = await Tenant.findByIdAndUpdate(
-      id,
-      { firstName, lastName, email, phone, deleted },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Tenant not found.' });
-    res.json(updated);
+    const { firstName, lastName, email, phone, deleted, property: propertyId, unitLabel, floor } = req.body;
+    const tenant = await Tenant.findById(id);
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found.' });
+    // If moving to a new room/unit, update property units
+    let oldPropertyId = tenant.property;
+    let oldUnitLabel = tenant.unitLabel;
+    let oldFloor = tenant.floor;
+    let newPropertyId = propertyId || tenant.property;
+    let newUnitLabel = unitLabel || tenant.unitLabel;
+    let newFloor = floor || tenant.floor;
+    // If property/unitLabel changed, update old and new rooms
+    if ((oldPropertyId && oldUnitLabel) && (oldPropertyId.toString() !== newPropertyId.toString() || oldUnitLabel !== newUnitLabel)) {
+      // Set old room vacant
+      const oldProperty = await Property.findById(oldPropertyId);
+      if (oldProperty) {
+        for (const floorObj of oldProperty.units) {
+          const unit = floorObj.units.find(u => u.label === oldUnitLabel);
+          if (unit && unit.tenant && unit.tenant.toString() === tenant._id.toString()) {
+            unit.tenant = null;
+            unit.status = 'vacant';
+            break;
+          }
+        }
+        await oldProperty.save();
+      }
+    }
+    if (newPropertyId && newUnitLabel) {
+      // Set new room occupied
+      const newProperty = await Property.findById(newPropertyId);
+      if (newProperty) {
+        for (const floorObj of newProperty.units) {
+          const unit = floorObj.units.find(u => u.label === newUnitLabel);
+          if (unit) {
+            unit.tenant = tenant._id;
+            unit.status = 'occupied';
+            newFloor = floorObj.floor;
+            break;
+          }
+        }
+        await newProperty.save();
+      }
+    }
+    // Update tenant fields
+    tenant.firstName = firstName !== undefined ? firstName : tenant.firstName;
+    tenant.lastName = lastName !== undefined ? lastName : tenant.lastName;
+    tenant.email = email !== undefined ? email : tenant.email;
+    tenant.phone = phone !== undefined ? phone : tenant.phone;
+    tenant.deleted = deleted !== undefined ? deleted : tenant.deleted;
+    tenant.property = newPropertyId;
+    tenant.unitLabel = newUnitLabel;
+    tenant.floor = newFloor;
+    await tenant.save();
+    res.json(tenant);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update tenant.' });
   }
@@ -31,8 +76,8 @@ const updateTenant = async (req, res) => {
 
 const createTenant = async (req, res) => {
   try {
-    console.log('CREATE TENANT PAYLOAD:', req.body);
-    const { firstName, lastName, username, email, phone, password, propertyId, unitType } = req.body;
+    // console.log('CREATE TENANT BODY:', req.body); // Removed debug log
+    const { firstName, lastName, username, email, phone, password, propertyId, unitType, unitLabel, floor } = req.body;
     if (!firstName || !lastName || !username || !email || !phone || !password) {
       return res.status(400).json({ error: 'All fields required.' });
     }
@@ -45,11 +90,46 @@ const createTenant = async (req, res) => {
     if (propertyId && !unitType) {
       return res.status(400).json({ error: 'unitType is required when assigning a property.' });
     }
+    // Determine floor if not provided but unitLabel is
+    let finalFloor = floor;
+    if (!finalFloor && propertyId && unitLabel) {
+      const property = await Property.findById(propertyId);
+      if (property) {
+        for (const floorObj of property.units) {
+          const unit = floorObj.units.find(u => u.label === unitLabel);
+          if (unit) {
+            finalFloor = floorObj.floor;
+            break;
+          }
+        }
+      }
+    }
     const tenant = await Tenant.create({
       firstName, lastName, username, email, phone, passwordHash, isActive: true, landlord,
       property: propertyId || undefined,
       unitType: unitType || undefined,
+      unitLabel: unitLabel || undefined,
+      floor: finalFloor || undefined,
     });
+    // console.log('CREATED TENANT:', tenant); // Removed debug log
+    // If propertyId and unitLabel are provided, assign the tenant to the unit
+    if (propertyId && unitLabel) {
+      const Property = require('../models/Property');
+      const property = await Property.findById(propertyId);
+      let found = false;
+      if (property) {
+        for (const floorObj of property.units) {
+          const unit = floorObj.units.find(u => u.label === unitLabel);
+          if (unit && unit.status === 'vacant') {
+            unit.tenant = tenant._id;
+            unit.status = 'occupied';
+            found = true;
+            break;
+          }
+        }
+        if (found) await property.save();
+      }
+    }
     res.status(201).json(tenant);
   } catch (err) {
     console.error('CREATE TENANT ERROR:', err && err.stack ? err.stack : err);

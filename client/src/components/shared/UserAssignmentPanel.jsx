@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+// Eye icons for show/hide password
+const EyeOpen = () => (
+  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+);
+const EyeClosed = () => (
+  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95m3.362-2.7A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.542 7a9.973 9.973 0 01-4.293 5.03M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" /></svg>
+);
 
 const UserAssignmentPanel = ({
   properties,
@@ -11,6 +18,8 @@ const UserAssignmentPanel = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Get property object
   const property = properties.find(p => (p._id || p.id) === selectedPropertyId);
@@ -52,11 +61,8 @@ const UserAssignmentPanel = ({
         propertyId: selectedPropertyId,
         floor: selectedFloor,
         unitLabel: selectedUnitLabel,
-        tenant: {
-          ...tenantPayload,
-          propertyId: selectedPropertyId,
-          unitType: unitOptions.find(u => u.label === selectedUnitLabel)?.type || '',
-        },
+        unitType: unitOptions.find(u => u.label === selectedUnitLabel)?.type || '',
+        ...tenantPayload,
       });
       setSuccess('Tenant assigned successfully!');
       setTenantDetails({ firstName: '', lastName: '', email: '', phone: '' });
@@ -64,7 +70,18 @@ const UserAssignmentPanel = ({
       setSelectedFloor('');
       setSelectedUnitLabel('');
     } catch (err) {
-      setError('Failed to add tenant.');
+      let msg = 'Failed to add tenant.';
+      if (err && err.response && err.response.data && err.response.data.error) {
+        msg = err.response.data.error;
+      } else if (err && err.message) {
+        msg = err.message;
+      } else if (err && typeof err === 'string') {
+        msg = err;
+      }
+      setError(msg);
+      // Also log the error for debugging
+      // eslint-disable-next-line no-console
+      console.error('Add Tenant Error:', err);
     } finally {
       setLoading(false);
     }
@@ -181,23 +198,45 @@ const UserAssignmentPanel = ({
           </div>
           <div>
             <label className="block font-semibold mb-1">Password</label>
-            <input
-              type="password"
-              className="w-full border rounded px-3 py-2"
-              value={tenantDetails.password}
-              onChange={e => setTenantDetails({ ...tenantDetails, password: e.target.value })}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="w-full border rounded px-3 py-2 pr-10"
+                value={tenantDetails.password}
+                onChange={e => setTenantDetails({ ...tenantDetails, password: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                tabIndex={-1}
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeClosed /> : <EyeOpen />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block font-semibold mb-1">Confirm Password</label>
-            <input
-              type="password"
-              className="w-full border rounded px-3 py-2"
-              value={tenantDetails.confirmPassword}
-              onChange={e => setTenantDetails({ ...tenantDetails, confirmPassword: e.target.value })}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                className="w-full border rounded px-3 py-2 pr-10"
+                value={tenantDetails.confirmPassword}
+                onChange={e => setTenantDetails({ ...tenantDetails, confirmPassword: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                tabIndex={-1}
+                onClick={() => setShowConfirmPassword(v => !v)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeClosed /> : <EyeOpen />}
+              </button>
+            </div>
           </div>
         </>
       )}

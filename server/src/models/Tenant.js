@@ -12,6 +12,8 @@ const TenantSchema = new mongoose.Schema({
   landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
   unitType: { type: String },
+  floor: { type: String },
+  unitLabel: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tenant', TenantSchema);

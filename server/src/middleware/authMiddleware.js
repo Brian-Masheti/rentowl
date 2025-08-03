@@ -8,8 +8,8 @@ function requireAuth(req, res, next) {
   try {
     const decoded = jwt.verify(auth.split(' ')[1], JWT_SECRET);
     // DEBUG: Log the decoded JWT and Authorization header
-    console.log('AUTH HEADER:', auth);
-    console.log('DECODED JWT:', decoded);
+    // console.log('AUTH HEADER:', auth);
+    // console.log('DECODED JWT:', decoded);
     req.user = decoded;
     next();
   } catch (err) {

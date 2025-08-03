@@ -94,7 +94,8 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
     return (
       <div className="mb-6 p-4 bg-[#FFF8F0] rounded-xl border border-[#FFA673]/40">
         <h3 className="font-bold text-[#03A6A1] mb-2">Assign Existing Tenant to Property</h3>
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="overflow-x-auto md:block hidden">
           <table className="min-w-full border border-[#FFA673]/20 rounded-2xl bg-white/90 shadow-lg">
             <thead>
               <tr className="bg-[#FFF8F0] text-[#03A6A1]">
@@ -124,6 +125,33 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
               ))}
             </tbody>
           </table>
+        </div>
+        {/* Mobile Cards */}
+        <div className="md:hidden flex flex-col gap-4">
+          {unassignedTenants.map(t => (
+            <div key={t._id} className="bg-white rounded-xl shadow-lg p-4 flex flex-col gap-2 border border-[#FFA673]/30 hover:shadow-xl hover:scale-[1.01] transition-all duration-200">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-[#03A6A1]/20 text-[#03A6A1] font-bold text-lg shadow-sm">
+                  {t.firstName?.[0]}{t.lastName?.[0]}
+                </span>
+                <div className="flex-1">
+                  <div className="text-[#03A6A1] font-bold text-lg">{t.firstName} {t.lastName}</div>
+                  <div className="text-xs text-gray-500">{t.email}</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 text-sm">
+                <div><span className="font-semibold text-[#FFA673]">Phone:</span> {t.phone}</div>
+              </div>
+              <div className="flex gap-3 mt-2">
+                <button
+                  className="bg-[#03A6A1] text-white font-bold px-4 py-2 rounded hover:bg-[#FFA673] transition"
+                  onClick={() => setSelectedTenant(t._id)}
+                >
+                  Assign
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
         {selectedTenant && (
           <div className="flex flex-wrap gap-2 items-center mt-4">
