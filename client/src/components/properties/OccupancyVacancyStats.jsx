@@ -388,4 +388,4 @@ const OccupancyVacancyStats = () => {
   );
 };
 
-export default OccupancyVacancyStats;
+export default OccupancyVacancyStats

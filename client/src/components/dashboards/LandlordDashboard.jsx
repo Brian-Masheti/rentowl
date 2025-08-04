@@ -718,6 +718,7 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
                     errMsg = errData.error || errMsg;
                   } catch (jsonErr) {
                     errMsg = 'Failed to parse error response';
+                    console.log(jsonErr);
                   }
                   throw new Error(errMsg);
                 }
@@ -895,6 +896,8 @@ function LandlordDashboard() {
   const [editTenant, setEditTenant] = useState(null);
   const [deactivateTenant, setDeactivateTenant] = useState(null);
   const [drawerTenant, setDrawerTenant] = useState(null);
+  // Sidebar expanded state for layout
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   // Close tenant drawer on Escape key
   useEffect(() => {
@@ -1494,8 +1497,15 @@ function LandlordDashboard() {
         />
       </div>
       <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
-        <LandlordSidebar onSelect={setSelectedSection} selected={selectedSection} />
-        <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
+        <LandlordSidebar onSelect={setSelectedSection} selected={selectedSection} expanded={sidebarExpanded} setExpanded={setSidebarExpanded} />
+        <main
+          className={`flex-1 transition-all duration-300 ${sidebarExpanded ? 'ml-72' : 'ml-16'}`}
+          style={{
+            padding: 32,
+            background: '#FFF8F0',
+            minHeight: '100vh',
+          }}
+        >
           {/* Sticky nav bar for desktop/tablet */}
           <StickyNavBar
             label={selectedSection === 'settings' ? 'Profile & Settings' : (landlordMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Landlord Dashboard')}

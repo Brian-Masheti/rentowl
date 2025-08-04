@@ -37,8 +37,7 @@ const mainItems = [
 ];
 const settingsItem = { label: 'Profile & Settings', icon: <FaCog />, key: 'settings' };
 
-const LandlordSidebar = ({ onSelect, selected }) => {
-  const [expanded, setExpanded] = useState(false);
+const LandlordSidebar = ({ onSelect, selected, expanded, setExpanded }) => {
   const [stats, setStats] = useState({});
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
@@ -67,7 +66,7 @@ const LandlordSidebar = ({ onSelect, selected }) => {
     if (onSelect) onSelect(item.key);
   };
 
-  const sidebarClasses = `flex flex-col justify-start bg-[#03A6A1] text-white transition-all duration-300 ease-in-out ${expanded && !isMobile ? 'w-56' : 'w-16'} min-h-screen overflow-hidden`;
+  const sidebarClasses = `fixed top-0 left-0 h-screen z-30 flex flex-col justify-start bg-[#03A6A1] text-white transition-all duration-300 ease-in-out ${expanded && !isMobile ? 'w-72' : 'w-16'} overflow-hidden`;
 
   return (
     <nav

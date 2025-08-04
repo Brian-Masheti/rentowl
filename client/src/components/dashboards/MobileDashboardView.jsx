@@ -105,7 +105,7 @@ const MobileDashboardView = ({
               }}
             >
               <span style={{ fontSize: 20, display: 'flex', alignItems: 'center' }}>{item.icon}</span>
-              <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>
+              <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 14, overflowWrap: 'anywhere', lineHeight: 1.2 }}>{item.label}</span>
             </div>
           );
         }
@@ -142,7 +142,7 @@ const MobileDashboardView = ({
             {/* Sidebar */}
             <nav
               className="fixed top-0 left-0 h-full z-50 text-white shadow-lg transition-transform duration-300 ease-in-out"
-              style={{ width: 240, minHeight: '100vh', transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', background: sidebarBgColor }}
+              style={{ width: 288, minHeight: '100vh', transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)', background: sidebarBgColor }}
             >
               <div className="flex items-center justify-between px-4 py-3 mb-4">
                 <span className="font-bold text-lg">Menu</span>
