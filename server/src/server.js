@@ -69,6 +69,8 @@ app.use('/api/checklists', checkListRoutes);
 app.use('/api', dashboardRoutes);
 app.use('/api', activityRoutes);
 app.use('/api/profile', require('./routes/profileRoutes'));
+const occupancyRoutes = require('./routes/occupancyRoutes');
+app.use('/api', occupancyRoutes);
 
 // Block expired landlords for all protected landlord routes
 app.use('/api/properties', checkLandlordSubscription);

@@ -626,6 +626,7 @@ import MobileDashboardView from './MobileDashboardView';
 import UserAssignmentPanel from '../shared/UserAssignmentPanel';
 import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
 import FinancialReport from '../financial/FinancialReport';
+import OccupancyVacancyStats from '../properties/OccupancyVacancyStats';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import CaretakerManagement from '../caretakers/CaretakerManagement';
 import CaretakerActions from '../caretakers/actions/CaretakerActions';
@@ -1472,7 +1473,7 @@ function LandlordDashboard() {
     'legal-documents': <LegalDocuments />,
     'tenant-checkin': <CheckListManager />,
     'monthly-income': <FinancialReport type="monthly-income" />, 
-    'occupancy-vacancy': <FinancialReport type="occupancy" />, 
+    'occupancy-vacancy': <OccupancyVacancyStats />, 
     'rent-arrears': <FinancialReport type="arrears" />, 
     profile: <p>View and edit your profile information.</p>,
     settings: (

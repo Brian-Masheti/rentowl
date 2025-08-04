@@ -64,7 +64,7 @@ const PropertyList = ({ refreshToken }) => {
         property={deactivateProperty}
         onSuccess={() => window.location.reload()}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
         {properties.map((property) => {
         // Flatten all units from all floors
         const allUnits = (property.units || []).flatMap(floorObj => floorObj.units || []);
@@ -140,10 +140,20 @@ const PropertyList = ({ refreshToken }) => {
                         <span className="font-semibold text-[#03A6A1] text-base">{unit.type}</span>
                         <span className="bg-[#FFA673] text-white px-3 py-1 rounded font-bold text-base shadow-sm">Kshs {unit.rent !== undefined && unit.rent !== null ? unit.rent.toLocaleString() : ''}</span>
                       </div>
-                      <div className="flex justify-between items-center text-xs mt-1 gap-2">
-                        <span className="bg-[#03A6A1]/10 text-[#03A6A1] px-2 py-1 rounded font-semibold">Total: {unit.total}</span>
-                        <span className="bg-gradient-to-r from-[#FFA673]/40 to-[#FF4F0F]/30 text-black px-2 py-1 rounded font-bold border border-[#FFA673]/30">Occupied: {unit.occupied}</span>
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">Available: {available}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="bg-[#03A6A1]/10 text-[#03A6A1] px-2 py-1 rounded font-semibold text-xs">Total: {unit.total}</span>
+                        <span className="bg-[#03A6A1]/90 text-white px-2 py-1 rounded font-bold text-xs">Occupied: {unit.occupied}</span>
+                        <span className="bg-[#FFA673]/90 text-white px-2 py-1 rounded font-bold text-xs">Vacant: {available}</span>
+                        <div className="flex-1 h-2 bg-gray-200 rounded overflow-hidden ml-2">
+                          <div
+                            className="h-2 bg-[#03A6A1] rounded-l"
+                            style={{ width: `${unit.total ? (unit.occupied / unit.total) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="h-2 bg-[#FFA673] rounded-r"
+                            style={{ width: `${unit.total ? (available / unit.total) * 100 : 0}%`, marginLeft: unit.total ? `${(unit.occupied / unit.total) * 100}%` : 0 }}
+                          />
+                        </div>
                       </div>
                     </div>
                   );
