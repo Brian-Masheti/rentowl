@@ -16,39 +16,51 @@ const createProperty = async (req, res) => {
     }
     const landlord = req.user && req.user.id;
 
-    // Grouped units by floor with auto-generated labels
+    // Uniform floor and unit label generation
+    const floorNames = ["Ground", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    function getFloorLabel(idx) {
+      return floorNames[idx] || `${idx + 1}th`;
+    }
+    function getFloorPrefix(idx) {
+      if (idx === 0) return "G";
+      if (idx === 1) return "F";
+      return `${idx}F`;
+    }
+    function getTypePrefix(type) {
+      if (!type) return "U";
+      const t = type.toLowerCase();
+      if (t === "bedsitter") return "B";
+      if (t === "1 bedroom") return "1B";
+      if (t === "2 bedroom") return "2B";
+      if (t === "3 bedroom") return "3B";
+      if (t === "4 bedroom") return "4B";
+      if (t === "penthouse") return "P";
+      if (t === "single room") return "SR";
+      if (t === "double room") return "DR";
+      if (t === "condominium") return "C";
+      if (t === "other") return "O";
+      return type.replace(/\s+/g, "").toUpperCase();
+    }
     let groupedUnits = [];
     if (Array.isArray(units)) {
-      // Group all units by floor name, only include floors with non-empty units
-      const floorMap = {};
       units.forEach((floorObj, floorIdx) => {
-        const floorLabel = floorObj.floor || (floorIdx === 0 ? 'Ground' : floorIdx === 1 ? 'First' : `${floorIdx}F`);
-        if (!floorMap[floorLabel]) floorMap[floorLabel] = [];
+        const floorLabel = getFloorLabel(floorIdx);
+        const floorPrefix = getFloorPrefix(floorIdx);
         let typeCounts = {};
-        (floorObj.units || []).forEach((unit) => {
-          // For mixed: label = G + type initial + number (e.g., GB1, G1B2, FB1, 2F2B3)
-          const typeKey = unit.type;
-          typeCounts[typeKey] = (typeCounts[typeKey] || 0) + 1;
-          let label = '';
-          if (floorLabel.toLowerCase().startsWith('ground')) label = `G${typeKey[0].toUpperCase()}${typeCounts[typeKey]}`;
-          else if (floorLabel.toLowerCase().startsWith('first')) label = `F${typeKey[0].toUpperCase()}${typeCounts[typeKey]}`;
-          else {
-            const match = floorLabel.match(/(\d+)/);
-            if (match) label = `${match[1]}F${typeKey[0].toUpperCase()}${typeCounts[typeKey]}`;
-            else label = `${floorLabel[0].toUpperCase()}${typeKey[0].toUpperCase()}${typeCounts[typeKey]}`;
-          }
-          floorMap[floorLabel].push({
+        const newUnits = (floorObj.units || []).map((unit) => {
+          const typePrefix = getTypePrefix(unit.type);
+          typeCounts[typePrefix] = (typeCounts[typePrefix] || 0) + 1;
+          const label = `${floorPrefix}${typePrefix}${typeCounts[typePrefix]}`;
+          return {
             ...unit,
             label,
             floor: floorLabel,
             status: unit.status || 'vacant',
             tenant: unit.tenant || null
-          });
+          };
         });
+        groupedUnits.push({ floor: floorLabel, units: newUnits });
       });
-      groupedUnits = Object.entries(floorMap)
-        .filter(([_, unitsArr]) => unitsArr.length > 0)
-        .map(([floor, unitsArr]) => ({ floor, units: unitsArr }));
     }
 
     // Handle file uploads and generate thumbnails
@@ -219,15 +231,28 @@ const updateProperty = async (req, res) => {
     if (profilePicThumb) updateFields.profilePicThumb = profilePicThumb;
     if (gallery.length > 0) updateFields.gallery = gallery;
     if (galleryThumbs.length > 0) updateFields.galleryThumbs = galleryThumbs;
-    const property = await Property.findByIdAndUpdate(id, updateFields, { new: true })
-      .populate({
-        path: 'tenants.tenant',
-        model: 'Tenant',
-        select: 'firstName lastName email phone',
-      });
+    let property = await Property.findByIdAndUpdate(id, updateFields, { new: true });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
+    // Manually populate tenant info for each unit
+    if (Array.isArray(property.units) && property.units.length > 0) {
+      for (const floorObj of property.units) {
+        for (const unit of floorObj.units) {
+          if (unit.tenant) {
+            try {
+              if (typeof unit.tenant === 'string' || (unit.tenant && unit.tenant._id)) {
+                const tenant = await require('../models/Tenant').findById(unit.tenant).select('firstName lastName email phone');
+                unit.tenant = tenant;
+              }
+            } catch (err) {
+              unit.tenant = null;
+            }
+          }
+        }
+      }
+    }
     res.json(property);
   } catch (err) {
+    console.error('updateProperty error:', err && err.stack ? err.stack : err);
     res.status(500).json({ error: 'Failed to update property.' });
   }
 };

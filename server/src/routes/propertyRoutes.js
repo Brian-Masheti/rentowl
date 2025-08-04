@@ -37,14 +37,10 @@ router.put(
   '/:id',
   requireAuth,
   requirePermission(permissions['property:update']),
-  (req, res, next) => {
-    try {
-      next();
-    } catch (err) {
-      console.error('Error in upload middleware:', err);
-      res.status(500).json({ error: 'Upload middleware error', details: err });
-    }
-  },
+  upload.fields([
+    { name: 'profilePic', maxCount: 1 },
+    { name: 'gallery', maxCount: 10 }
+  ]),
   updateProperty
 );
 router.delete('/:id', requireAuth, requirePermission(permissions['property:delete']), deleteProperty);

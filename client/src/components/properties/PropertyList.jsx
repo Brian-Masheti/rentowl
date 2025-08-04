@@ -115,15 +115,22 @@ const PropertyList = ({ refreshToken }) => {
               {property.description && (
                 <div className="text-xs text-gray-600 mb-2" style={{ whiteSpace: 'pre-line' }}>{property.description}</div>
               )}
-              {(property.profilePicThumb || property.profilePic) && (
-                <div className="flex justify-center my-2">
-                  <LazyImage
-                    src={getImageUrl(property.profilePicThumb || property.profilePic)}
-                    alt={property.name}
-                    className="h-32 w-48 object-cover rounded-xl border border-[#FFA673]/40 shadow"
-                  />
-                </div>
-              )}
+              <div className="-mx-5 mb-4">
+                {(() => {
+                  const coverUrl = getImageUrl(property.profilePicThumb || property.profilePic);
+                  return property.profilePicThumb || property.profilePic ? (
+                    <img
+                      src={coverUrl}
+                      alt={property.name}
+                      style={{ width: '100%', height: 180, objectFit: 'cover', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}
+                    />
+                  ) : (
+                    <div className="w-full h-[180px] flex items-center justify-center rounded-t-2xl border border-[#FFA673]/40 bg-gradient-to-br from-[#FFF8F0] to-[#FFA673]/30 text-[#FFA673] text-3xl font-bold">
+                      <FaBuilding className="opacity-40" />
+                    </div>
+                  );
+                })()}
+              </div>
               <div className="flex flex-col gap-2 mt-2">
                 {Object.entries(grouped).map(([key, unit], idx) => {
                   const available = (unit.total || 0) - unit.occupied;
@@ -144,15 +151,20 @@ const PropertyList = ({ refreshToken }) => {
               </div>
               {(property.galleryThumbs && property.galleryThumbs.length > 0 ? property.galleryThumbs : property.gallery) && (property.galleryThumbs && property.galleryThumbs.length > 0 ? property.galleryThumbs : property.gallery).length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {(property.galleryThumbs && property.galleryThumbs.length > 0 ? property.galleryThumbs : property.gallery).slice(0, 3).map((img, idx) => (
-                    <LazyImage
-                      key={idx}
-                      src={getImageUrl(img)}
-                      alt={`Gallery ${idx + 1}`}
-                      className="h-8 w-8 object-cover rounded border border-[#03A6A1] hover:scale-105 transition-transform duration-200"
-                    />
-                  ))}
-                </div>              )}
+                  {(() => {
+                    const galleryArr = (property.galleryThumbs && property.galleryThumbs.length > 0 ? property.galleryThumbs : property.gallery).slice(0, 3);
+                    // Removed gallery image debug logs
+                    return galleryArr.map((img, idx) => (
+                      <img
+                        key={idx}
+                        src={getImageUrl(img)}
+                        alt={`Gallery ${idx + 1}`}
+                        style={{ height: 32, width: 32, objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #03A6A1', marginRight: 4 }}
+                      />
+                    ));
+                  })()}
+                </div>              
+              )}
             </div>
           </div>
         );

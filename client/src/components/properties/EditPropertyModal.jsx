@@ -63,9 +63,38 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
   } : { name: '', address: '', description: '', units: [] });
   const [activeFloor, setActiveFloor] = useState(0);
   const [coverFile, setCoverFile] = useState(null);
-  const [coverPreview, setCoverPreview] = useState(property && property.profilePic ? property.profilePic : null);
+  const API_URL = import.meta.env.VITE_API_URL || '';
+  const getImageUrl = (img) => {
+    if (!img) return '';
+    let url = img.replace(/\\/g, '/');
+    if (url.startsWith('uploads/') || url.startsWith('server/uploads/')) {
+      url = `${API_URL}/${url.replace('server/', '')}`;
+    }
+    return url;
+  };
+  // Always use getImageUrl for cover image
+  const [coverPreview, setCoverPreview] = useState(property && property.profilePic ? getImageUrl(property.profilePic) : null);
+  useEffect(() => {
+    if (property && property.profilePic) {
+      setCoverPreview(getImageUrl(property.profilePic));
+    }
+  }, [property]);
+  // Use galleryThumbs for thumbnails, gallery for full images
+  const [galleryThumbs, setGalleryThumbs] = useState(
+    property && property.galleryThumbs
+      ? property.galleryThumbs.map(getImageUrl)
+      : []
+  );
+  const [galleryFull, setGalleryFull] = useState(
+    property && property.gallery
+      ? property.gallery.map(getImageUrl)
+      : []
+  );
+  // Debug: log the URLs being used for images
+  // Removed debug logs for gallery URLs
+  // For new uploads, use previews
   const [galleryFiles, setGalleryFiles] = useState([]);
-  const [galleryPreviews, setGalleryPreviews] = useState(property && property.galleryThumbs ? property.galleryThumbs : []);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [galleryViewer, setGalleryViewer] = useState({ open: false, idx: 0 });
   const modalRef = useRef();
 
@@ -85,10 +114,18 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     setGalleryPreviews(property.galleryThumbs ? property.galleryThumbs : []);
   }, [property]);
 
-  // Modal close on click outside or Esc
+  // Modal close on click outside or Esc, with special handling for gallery viewer
   useEffect(() => {
     if (!open) return;
-    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        if (galleryViewer.open) {
+          setGalleryViewer({ open: false, idx: 0 });
+        } else {
+          onClose();
+        }
+      }
+    };
     const handleClick = (e) => { if (modalRef.current && !modalRef.current.contains(e.target)) onClose(); };
     window.addEventListener('keydown', handleEsc);
     window.addEventListener('mousedown', handleClick);
@@ -96,7 +133,7 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
       window.removeEventListener('keydown', handleEsc);
       window.removeEventListener('mousedown', handleClick);
     };
-  }, [open, onClose]);
+  }, [open, onClose, galleryViewer.open]);
 
   if (!open || !property) return null;
 
@@ -149,17 +186,41 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     setGalleryFiles(files => files.filter((_, i) => i !== idx));
   };
 
-  // Save handler (wire up to backend as needed)
-  const handleSave = () => {
-    // TODO: Send form, coverFile, galleryFiles to backend
-    alert('Save not yet implemented.');
-    onClose();
-    if (onSuccess) onSuccess();
+  // Save handler (sends data to backend)
+  const handleSave = async () => {
+    const formData = new FormData();
+    formData.append('name', form.name);
+    formData.append('address', form.address);
+    formData.append('description', form.description);
+    formData.append('units', JSON.stringify(form.units));
+    if (coverFile) {
+      formData.append('profilePic', coverFile);
+    }
+    galleryFiles.forEach((file) => {
+      formData.append('gallery', file);
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/properties/${property._id}`, {
+        method: 'PUT',
+        body: formData,
+        credentials: 'include', // if you use cookies/auth
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+      if (!res.ok) throw new Error('Failed to update property');
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      alert('Error updating property: ' + err.message);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div ref={modalRef} className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full relative">
+      <div ref={modalRef} className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
         <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={onClose}>&times;</button>
         <h2 className="text-xl font-bold mb-4 text-[#03A6A1]">Edit Property</h2>
         <div className="mb-4 flex flex-col gap-2">
@@ -185,7 +246,25 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
               }}
             />
             {coverPreview && (
-              <img src={coverPreview} alt="Cover Preview" className="h-16 w-24 object-cover rounded-xl border border-[#FFA673]/40" />
+              <>
+                <img
+                  src={getImageUrl(coverPreview)}
+                  alt="Cover Preview"
+                  className="h-16 w-24 object-cover rounded-xl border border-[#FFA673]/40 cursor-pointer"
+                  onClick={() => {
+                    const coverUrl = getImageUrl(coverPreview);
+                    let idx = galleryPreviews.findIndex(url => url === coverUrl);
+                    let newGalleryPreviews = galleryPreviews;
+                    if (idx === -1) {
+                      newGalleryPreviews = [coverUrl, ...galleryPreviews];
+                      setGalleryPreviews(newGalleryPreviews);
+                      idx = 0;
+                    }
+                    setGalleryViewer({ open: true, idx });
+                  }}
+                  title="Click to view larger"
+                />
+              </>
             )}
           </div>
           {/* Gallery images upload */}
@@ -208,23 +287,101 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
                 ]);
               }}
             />
-            {galleryPreviews.map((img, idx) => (
-              <div key={idx} className="relative inline-block">
-                <img src={img} alt={`Gallery Preview ${idx + 1}`} className="h-12 w-16 object-cover rounded border border-[#FFA673]/40" onClick={() => setGalleryViewer({ open: true, idx })} />
-                <button
-                  className="absolute -top-2 -right-2 bg-[#FF4F0F] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow"
-                  onClick={e => { e.stopPropagation(); removeGalleryImage(idx); }}
-                  title="Remove Image"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
+            {/* Render new uploads if any, otherwise show existing images */}
+            {galleryPreviews.length > 0
+              ? galleryPreviews.map((img, idx) => (
+                  <div key={idx} className="relative inline-block">
+                    <img
+                      src={img}
+                      alt={`Gallery Preview ${idx + 1}`}
+                      className="h-12 w-16 object-cover rounded border border-[#FFA673]/40"
+                      onClick={() => setGalleryViewer({ open: true, idx })}
+                      onError={e => {
+                        e.target.onerror = null;
+                        e.target.src = '';
+                        e.target.alt = 'Image not found';
+                        e.target.style.background = '#eee';
+                        e.target.style.color = '#aaa';
+                        e.target.style.display = 'flex';
+                        e.target.style.alignItems = 'center';
+                        e.target.style.justifyContent = 'center';
+                        e.target.style.fontSize = '10px';
+                        e.target.style.fontWeight = 'bold';
+                        e.target.style.content = 'Image not found';
+                        console.error('Failed to load image:', img);
+                      }}
+                    />
+                    <button
+                      className="absolute -top-2 -right-2 bg-[#FF4F0F] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow"
+                      onClick={e => { e.stopPropagation(); removeGalleryImage(idx); }}
+                      title="Remove Image"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))
+              : (galleryThumbs.length > 0
+                ? galleryThumbs.map((img, idx) => (
+                    <div key={idx} className="relative inline-block">
+                      <img
+                        src={img}
+                        alt={`Gallery Thumb ${idx + 1}`}
+                        className="h-12 w-16 object-cover rounded border border-[#FFA673]/40"
+                        onClick={() => setGalleryViewer({ open: true, idx })}
+                        onError={e => {
+                          e.target.onerror = null;
+                          e.target.src = '';
+                          e.target.alt = 'Image not found';
+                          e.target.style.background = '#eee';
+                          e.target.style.color = '#aaa';
+                          e.target.style.display = 'flex';
+                          e.target.style.alignItems = 'center';
+                          e.target.style.justifyContent = 'center';
+                          e.target.style.fontSize = '10px';
+                          e.target.style.fontWeight = 'bold';
+                          e.target.style.content = 'Image not found';
+                          console.error('Failed to load image:', img);
+                        }}
+                      />
+                    </div>
+                  ))
+                : galleryFull.map((img, idx) => (
+                    <div key={idx} className="relative inline-block">
+                      <img
+                        src={img}
+                        alt={`Gallery Image ${idx + 1}`}
+                        className="h-12 w-16 object-cover rounded border border-[#FFA673]/40"
+                        onClick={() => setGalleryViewer({ open: true, idx })}
+                        onError={e => {
+                          e.target.onerror = null;
+                          e.target.src = '';
+                          e.target.alt = 'Image not found';
+                          e.target.style.background = '#eee';
+                          e.target.style.color = '#aaa';
+                          e.target.style.display = 'flex';
+                          e.target.style.alignItems = 'center';
+                          e.target.style.justifyContent = 'center';
+                          e.target.style.fontSize = '10px';
+                          e.target.style.fontWeight = 'bold';
+                          e.target.style.content = 'Image not found';
+                          console.error('Failed to load image:', img);
+                        }}
+                      />
+                    </div>
+                  ))
+              )
+            }
           </div>
         </div>
         {/* Gallery viewer modal */}
         {galleryViewer.open && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+            onClick={e => {
+              // Only close if the overlay itself is clicked, not the image or controls
+              if (e.target === e.currentTarget) setGalleryViewer({ open: false, idx: 0 });
+            }}
+          >
             <div className="relative">
               <button className="absolute top-2 right-2 text-white text-2xl font-bold z-10" onClick={() => setGalleryViewer({ open: false, idx: 0 })}>&times;</button>
               <button className="absolute left-2 top-1/2 -translate-y-1/2 text-white text-2xl font-bold z-10" onClick={() => setGalleryViewer(v => ({ open: true, idx: (v.idx - 1 + galleryPreviews.length) % galleryPreviews.length }))}>&lt;</button>
