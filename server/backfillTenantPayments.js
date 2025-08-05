@@ -20,19 +20,12 @@ async function backfill() {
   let updated = 0;
   for (const tenant of tenants) {
     console.log(`Checking tenant: ${tenant.firstName} ${tenant.lastName} (${tenant._id})`);
-    // Set default leaseStart/leaseEnd if missing
+    // Set default leaseStart if missing
     let changed = false;
     if (!tenant.leaseStart) {
       tenant.leaseStart = new Date();
       changed = true;
       console.log('  - Added leaseStart');
-    }
-    if (!tenant.leaseEnd) {
-      const end = new Date(tenant.leaseStart);
-      end.setFullYear(end.getFullYear() + 1); // 1 year lease
-      tenant.leaseEnd = end;
-      changed = true;
-      console.log('  - Added leaseEnd');
     }
     if (changed) await tenant.save();
     // Check for existing payments
@@ -56,29 +49,26 @@ async function backfill() {
         console.log(`  - Property ${property.name} units: [${allLabels.join(', ')}]`);
       }
       if (rentAmount) {
-        // Create deposit payment
+        // Create deposit payment (type: 'deposit')
         await Payment.create({
           tenant: tenant._id,
           property: tenant.property,
           amount: rentAmount,
           dueDate: tenant.leaseStart,
           status: 'unpaid',
+          type: 'deposit',
         });
-        // Create monthly rent payments for the lease period
-        let current = new Date(tenant.leaseStart);
-        const end = new Date(tenant.leaseEnd);
-        while (current <= end) {
-          await Payment.create({
-            tenant: tenant._id,
-            property: tenant.property,
-            amount: rentAmount,
-            dueDate: new Date(current),
-            status: 'unpaid',
-          });
-          current.setMonth(current.getMonth() + 1);
-        }
+        // Create one rent payment (type: 'rent')
+        await Payment.create({
+          tenant: tenant._id,
+          property: tenant.property,
+          amount: rentAmount,
+          dueDate: tenant.leaseStart,
+          status: 'unpaid',
+          type: 'rent',
+        });
         updated++;
-        console.log('  - Created deposit and rent payments');
+        console.log('  - Created deposit and rent payments (one each)');
       } else {
         console.log(`  - Skipped: Could not determine rent amount for unitLabel '${tenant.unitLabel}' in property '${property ? property.name : tenant.property}'`);
       }

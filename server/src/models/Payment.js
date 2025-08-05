@@ -7,8 +7,11 @@ const PaymentSchema = new mongoose.Schema(
     amount: { type: Number, required: true },
     amountPaid: { type: Number, default: 0 }, // Track partial payments
     dueDate: { type: Date, required: true },
-    status: { type: String, enum: ['paid', 'unpaid', 'overdue'], default: 'unpaid' },
+    status: { type: String, enum: ['paid', 'unpaid', 'partial', 'overdue'], default: 'unpaid' },
     type: { type: String, enum: ['rent', 'deposit', 'utility', 'other'], required: true },
+    paymentMethod: { type: String, enum: ['manual', 'mpesa', 'card', 'bank', 'other'], default: 'manual' },
+    transactionId: { type: String },
+    notes: { type: String },
     lastReminderSent: { type: Date },
   },
   { timestamps: true }

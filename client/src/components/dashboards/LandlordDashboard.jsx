@@ -626,6 +626,7 @@ import MobileDashboardView from './MobileDashboardView';
 import UserAssignmentPanel from '../shared/UserAssignmentPanel';
 import AssignUserToPropertyModal from '../common/AssignUserToPropertyModal';
 import FinancialReport from '../financial/FinancialReport';
+import MonthlyIncome from '../financial/MonthlyIncome';
 import OccupancyVacancyStats from '../properties/OccupancyVacancyStats';
 import ResponsiveTableOrCards from '../common/ResponsiveTableOrCards';
 import CaretakerManagement from '../caretakers/CaretakerManagement';
@@ -1556,9 +1557,10 @@ function LandlordDashboard() {
     'caretaker-actions': <CaretakerActions />,
     'legal-documents': <LegalDocuments />,
     'tenant-checkin': <CheckListManager />,
-    'monthly-income': <FinancialReport type="monthly-income" />, 
+    'monthly-income': <MonthlyIncome />, 
     'occupancy-vacancy': <OccupancyVacancyStats />, 
     'rent-arrears': <RentArrears />, 
+    'maintenance': <div className="bg-white rounded-xl shadow-lg p-8 text-center"><h2 className="text-2xl font-bold text-orange-600 mb-2">Maintenance</h2><p className="text-gray-600">This section will show maintenance requests, status, and actions. (Coming soon: maintenance dashboard.)</p></div>,
     profile: <p>View and edit your profile information.</p>,
     settings: (
       <ProfileSettings />
