@@ -633,6 +633,7 @@ import CaretakerActions from '../caretakers/actions/CaretakerActions';
 import LegalDocuments from '../legal/LegalDocuments';
 import CheckListManager from '../checklists/CheckListManager';
 import UnassignedTenantSelector from './UnassignedTenantSelector';
+import RentArrears from '../financial/RentArrears';
 const PropertyCreateForm = lazy(() => import('../properties/PropertyCreateForm'));
 const PropertyList = lazy(() => import('../properties/PropertyList'));
 
@@ -699,18 +700,30 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
             <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={() => setModalOpen(false)}>&times;</button>
             <UserAssignmentPanel
               properties={properties}
-              onAssignTenant={async (data) => {
+              onAssignTenant={async (data, isMultipart) => {
                 // POST to backend to create tenant
                 const API_URL = import.meta.env.VITE_API_URL || '';
                 const token = localStorage.getItem('token');
-                const res = await fetch(`${API_URL}/api/tenants`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                  },
-                  body: JSON.stringify(data),
-                });
+                let options;
+                if (isMultipart) {
+                  options = {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: data,
+                  };
+                } else {
+                  options = {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(data),
+                  };
+                }
+                const res = await fetch(`${API_URL}/api/tenants`, options);
                 if (!res.ok) {
                   let errMsg = 'Unknown error';
                   try {
@@ -890,6 +903,7 @@ function LandlordDashboard() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterProperty, setFilterProperty] = useState('');
+  const [filterLeaseType, setFilterLeaseType] = useState('');
 
 
   // State for modals
@@ -918,6 +932,7 @@ function LandlordDashboard() {
       (!search || t.firstName?.toLowerCase().includes(search.toLowerCase()) || t.lastName?.toLowerCase().includes(search.toLowerCase()) || t.email?.toLowerCase().includes(search.toLowerCase()))
       && (!filterStatus || t.status === filterStatus)
       && (!filterProperty || t.propertyName === filterProperty)
+      && (!filterLeaseType || t.leaseType === filterLeaseType)
     );
   const totalTenantPages = Math.ceil(filteredTenants.length / PAGE_SIZE) || 1;
   const paginatedTenants = filteredTenants.slice((tenantPage - 1) * PAGE_SIZE, tenantPage * PAGE_SIZE);
@@ -961,6 +976,9 @@ function LandlordDashboard() {
       phone: tenant.phone,
       floor: tenant.floor || '',
       unitLabel: tenant.unitLabel || '',
+      leaseType: tenant.leaseType || 'lease',
+      leaseStart: tenant.leaseStart ? tenant.leaseStart.slice(0, 10) : '',
+      leaseEnd: tenant.leaseEnd ? tenant.leaseEnd.slice(0, 10) : '',
     });
     const [success, setSuccess] = useState(false);
     // Get units for selected floor
@@ -1007,6 +1025,40 @@ function LandlordDashboard() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block font-semibold mb-1">Lease Type</label>
+              <select
+                className="border rounded px-3 py-2 w-full"
+                value={form.leaseType}
+                onChange={e => setForm(f => ({ ...f, leaseType: e.target.value }))}
+                required
+              >
+                <option value="lease">Lease (fixed-term)</option>
+                <option value="month-to-month">Month-to-Month</option>
+              </select>
+            </div>
+            {form.leaseType === 'lease' && (
+              <>
+                <div>
+                  <label className="block font-semibold mb-1">Lease Start Date</label>
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2 w-full"
+                    value={form.leaseStart}
+                    onChange={e => setForm(f => ({ ...f, leaseStart: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Lease End Date</label>
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2 w-full"
+                    value={form.leaseEnd}
+                    onChange={e => setForm(f => ({ ...f, leaseEnd: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
             <button type="submit" className="bg-[#03A6A1] text-white font-bold py-2 px-4 rounded hover:bg-[#FFA673] transition mt-2">Save</button>
             {success && <div className="text-green-600 text-sm mt-2">Tenant updated successfully!</div>}
           </form>
@@ -1014,9 +1066,26 @@ function LandlordDashboard() {
       </div>
     );
   }
-  function handleEditTenantSave(updated) {
-    setEditTenant(null);
-    // TODO: Call backend to update tenant, then refresh
+  async function handleEditTenantSave(updated) {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/tenants/${editTenant.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updated),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update tenant');
+      }
+      setEditTenant(null);
+      refresh(); // Refresh the tenant list
+    } catch (err) {
+      alert('Failed to update tenant: ' + (err.message || 'Unknown error'));
+    }
   }
   function DeactivateTenantModal({ tenant, onClose, onConfirm }) {
     const [success, setSuccess] = useState(false);
@@ -1121,6 +1190,7 @@ function LandlordDashboard() {
             unitType: t.unitType || '',
             floor: floor || t.floor || '',
             unitLabel: unitLabel || t.unitLabel || '',
+            leaseType: t.leaseType || 'lease',
             deleted: t.deleted || false,
             status: t.status || (t.deleted ? 'Deleted' : 'Active'),
           };
@@ -1201,17 +1271,17 @@ function LandlordDashboard() {
         <div className="mt-8">
           <h3 className="font-bold text-[#03A6A1] mb-2">Assigned Tenants</h3>
           {/* Search, filter, and pagination controls */}
-          <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <div className="flex flex-wrap md:flex-nowrap gap-2 mb-4 items-center">
             <input
               type="text"
               placeholder="Search tenants..."
-              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/3 focus:ring-2 focus:ring-[#FFA673]"
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 flex-1 min-w-0"
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ outline: 'none', boxShadow: 'none' }}
             />
             <select
-              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/4 focus:ring-2 focus:ring-[#FFA673]"
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 flex-1 min-w-0"
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
             >
@@ -1221,7 +1291,7 @@ function LandlordDashboard() {
               <option value="Deleted">Deleted</option>
             </select>
             <select
-              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 w-full md:w-1/4 focus:ring-2 focus:ring-[#FFA673]"
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 flex-1 min-w-0"
               value={filterProperty}
               onChange={e => setFilterProperty(e.target.value)}
             >
@@ -1229,6 +1299,15 @@ function LandlordDashboard() {
               {properties.map(p => (
                 <option key={p.id} value={p.name}>{p.name}</option>
               ))}
+            </select>
+            <select
+              className="border border-[#03A6A1] focus:border-[#FFA673] rounded px-3 py-2 flex-1 min-w-0"
+              value={filterLeaseType}
+              onChange={e => setFilterLeaseType(e.target.value)}
+            >
+              <option value="">All Lease Types</option>
+              <option value="lease">Lease (fixed-term)</option>
+              <option value="month-to-month">Month-to-Month</option>
             </select>
             <button
               className="ml-auto bg-[#FFA673] text-white font-bold px-4 py-2 rounded hover:bg-[#03A6A1] transition"
@@ -1302,6 +1381,7 @@ function LandlordDashboard() {
                   <th className="py-3 px-4 text-left">Unit Type</th>
                   <th className="py-3 px-4 text-left">Floor</th>
                   <th className="py-3 px-4 text-left">Room/Unit</th>
+                  <th className="py-3 px-4 text-left">Lease Type</th>
                   <th className="py-3 px-4 text-left">Status</th>
                   <th className="py-3 px-4 text-left rounded-tr-lg">Actions</th>
                 </tr>
@@ -1342,6 +1422,7 @@ function LandlordDashboard() {
                     <td className="py-3 px-4">{u.unitType}</td>
                     <td className="py-3 px-4">{u.floor || <span className="text-gray-400">-</span>}</td>
                     <td className="py-3 px-4">{u.unitLabel || <span className="text-gray-400">-</span>}</td>
+                    <td className="py-3 px-4">{u.leaseType === 'month-to-month' ? 'Month-to-Month' : 'Lease (fixed-term)'}</td>
                     <td className="py-3 px-4">
                     <span
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
@@ -1477,7 +1558,7 @@ function LandlordDashboard() {
     'tenant-checkin': <CheckListManager />,
     'monthly-income': <FinancialReport type="monthly-income" />, 
     'occupancy-vacancy': <OccupancyVacancyStats />, 
-    'rent-arrears': <FinancialReport type="arrears" />, 
+    'rent-arrears': <RentArrears />, 
     profile: <p>View and edit your profile information.</p>,
     settings: (
       <ProfileSettings />

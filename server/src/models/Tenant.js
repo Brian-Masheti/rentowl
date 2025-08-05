@@ -14,6 +14,10 @@ const TenantSchema = new mongoose.Schema({
   unitType: { type: String },
   floor: { type: String },
   unitLabel: { type: String },
+  leaseType: { type: String, enum: ['lease', 'month-to-month'], default: 'lease' },
+  leaseStart: { type: Date },
+  leaseEnd: { type: Date },
+  leaseDocument: { type: String }, // URL or file path to lease agreement
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tenant', TenantSchema);

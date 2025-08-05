@@ -1,6 +1,7 @@
 const express = require('express');
 const { updateTenant, getAllLandlordTenants, createTenant, assignTenantsBulk } = require('../controllers/tenantController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const uploadLeaseDoc = require('../middleware/uploadLeaseDoc');
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const router = express.Router();
 router.get('/', requireAuth, requireRole(['landlord']), getAllLandlordTenants);
 
 // POST /api/tenants - create tenant for current landlord
-router.post('/', requireAuth, requireRole(['landlord']), createTenant);
+router.post('/', requireAuth, requireRole(['landlord']), uploadLeaseDoc.single('leaseDocument'), createTenant);
 
 
 // POST /api/tenants/assign-bulk - bulk assign tenants to property/unit

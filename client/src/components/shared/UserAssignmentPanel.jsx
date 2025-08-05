@@ -14,7 +14,18 @@ const UserAssignmentPanel = ({
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [selectedFloor, setSelectedFloor] = useState('');
   const [selectedUnitLabel, setSelectedUnitLabel] = useState('');
-  const [tenantDetails, setTenantDetails] = useState({ firstName: '', lastName: '', username: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [tenantDetails, setTenantDetails] = useState({
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    leaseStart: '',
+    leaseEnd: '',
+    leaseDocument: null,
+  });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,13 +68,26 @@ const UserAssignmentPanel = ({
     try {
       // Only send password, not confirmPassword, to backend
       const { confirmPassword, ...tenantPayload } = tenantDetails;
-      await onAssignTenant({
-        propertyId: selectedPropertyId,
-        floor: selectedFloor,
-        unitLabel: selectedUnitLabel,
-        unitType: unitOptions.find(u => u.label === selectedUnitLabel)?.type || '',
-        ...tenantPayload,
+      // Remove leaseStart/leaseEnd if not lease
+      if (tenantPayload.leaseType !== 'lease') {
+        delete tenantPayload.leaseStart;
+        delete tenantPayload.leaseEnd;
+      }
+      // Prepare form data for file upload
+      const formData = new FormData();
+      formData.append('propertyId', selectedPropertyId);
+      formData.append('floor', selectedFloor);
+      formData.append('unitLabel', selectedUnitLabel);
+      formData.append('unitType', unitOptions.find(u => u.label === selectedUnitLabel)?.type || '');
+      Object.entries(tenantPayload).forEach(([key, value]) => {
+        if (key === 'leaseDocument' && value) {
+          formData.append('leaseDocument', value);
+        } else if (value) {
+          formData.append(key, value);
+        }
       });
+      // Do not set Content-Type header for FormData! Let browser handle it.
+      await onAssignTenant(formData, true); // true = multipart
       setSuccess('Tenant assigned successfully!');
       setTenantDetails({ firstName: '', lastName: '', email: '', phone: '' });
       setSelectedPropertyId('');
@@ -88,7 +112,7 @@ const UserAssignmentPanel = ({
   };
 
   return (
-    <form onSubmit={handleAssign} className="bg-white p-6 rounded-lg shadow-md max-w-xl w-full mx-auto flex flex-col gap-4">
+    <form onSubmit={handleAssign} className="bg-white p-6 rounded-lg shadow-md max-w-2xl w-full mx-auto flex flex-col gap-4" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
       <h2 className="text-xl font-bold mb-2 text-[#03A6A1]">Add Tenant to Property</h2>
       {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
       {success && <div className="text-green-600 text-sm mb-2">{success}</div>}
@@ -147,25 +171,27 @@ const UserAssignmentPanel = ({
       )}
       {selectedPropertyId && selectedFloor && selectedUnitLabel && (
         <>
-          <div>
-            <label className="block font-semibold mb-1">First Name</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={tenantDetails.firstName}
-              onChange={e => setTenantDetails({ ...tenantDetails, firstName: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Last Name</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
-              value={tenantDetails.lastName}
-              onChange={e => setTenantDetails({ ...tenantDetails, lastName: e.target.value })}
-              required
-            />
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block font-semibold mb-1">First Name</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={tenantDetails.firstName}
+                onChange={e => setTenantDetails({ ...tenantDetails, firstName: e.target.value })}
+                required
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block font-semibold mb-1">Last Name</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={tenantDetails.lastName}
+                onChange={e => setTenantDetails({ ...tenantDetails, lastName: e.target.value })}
+                required
+              />
+            </div>
           </div>
           <div>
             <label className="block font-semibold mb-1">Username</label>
@@ -195,6 +221,58 @@ const UserAssignmentPanel = ({
               value={tenantDetails.phone}
               onChange={e => setTenantDetails({ ...tenantDetails, phone: e.target.value })}
             />
+          </div>
+          <div>
+            <label className="block font-semibold mb-1">Lease Type</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={tenantDetails.leaseType}
+              onChange={e => setTenantDetails({ ...tenantDetails, leaseType: e.target.value })}
+              required
+            >
+              <option value="">---Select lease type---</option>
+              <option value="lease">Lease (fixed-term)</option>
+              <option value="month-to-month">Month-to-Month</option>
+            </select>
+          </div>
+          {tenantDetails.leaseType === 'lease' && (
+            <>
+              <div>
+                <label className="block font-semibold mb-1">Lease Start Date</label>
+                <input
+                  type="date"
+                  className="w-full border rounded px-3 py-2"
+                  value={tenantDetails.leaseStart}
+                  onChange={e => setTenantDetails({ ...tenantDetails, leaseStart: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Lease End Date</label>
+                <input
+                  type="date"
+                  className="w-full border rounded px-3 py-2"
+                  value={tenantDetails.leaseEnd}
+                  onChange={e => setTenantDetails({ ...tenantDetails, leaseEnd: e.target.value })}
+                  required
+                />
+              </div>
+            </>
+          )}
+          <div className="flex flex-col items-start gap-2">
+            <label className="block font-semibold mb-1">Lease Document (PDF/DOCX/Image, optional)</label>
+            <label className="rounded-full bg-[#03A6A1] text-white px-4 py-2 cursor-pointer hover:bg-[#FFA673] transition font-bold">
+              Upload Lease Document
+              <input
+                type="file"
+                accept=".pdf,.docx,image/*"
+                className="hidden"
+                onChange={e => setTenantDetails({ ...tenantDetails, leaseDocument: e.target.files[0] })}
+              />
+            </label>
+            {tenantDetails.leaseDocument && (
+              <span className="text-xs text-[#03A6A1] mt-1">{tenantDetails.leaseDocument.name}</span>
+            )}
           </div>
           <div>
             <label className="block font-semibold mb-1">Password</label>

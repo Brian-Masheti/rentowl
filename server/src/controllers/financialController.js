@@ -103,10 +103,54 @@ const getMonthlyIncome = async (req, res) => {
 };
 
 const getRentArrears = async (req, res) => {
-  res.json({
-    message: 'Rent arrears endpoint is working.',
-    data: [],
-  });
+  try {
+    const landlordId = req.user && req.user.id;
+    if (!landlordId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Fetch all properties for this landlord
+    const properties = await Property.find({ landlord: landlordId, isDeleted: { $ne: true } });
+    const propertyIds = properties.map(p => p._id);
+    const propertyMap = properties.reduce((acc, p) => {
+      acc[p._id.toString()] = p.name;
+      return acc;
+    }, {});
+
+    // Find all unpaid or overdue payments for these properties
+    const payments = await Payment.find({
+      property: { $in: propertyIds },
+      status: { $in: ['unpaid', 'overdue'] }
+    })
+      .populate({
+        path: 'tenant',
+        select: 'firstName lastName email phone unitType floor unitLabel',
+        model: 'Tenant'
+      })
+      .populate('property', 'name');
+
+    // Format arrears list
+    const arrears = payments.map(p => ({
+      paymentId: p._id,
+      tenantName: p.tenant ? `${p.tenant.firstName} ${p.tenant.lastName}` : 'Unknown',
+      tenantEmail: p.tenant ? p.tenant.email : '',
+      tenantPhone: p.tenant ? p.tenant.phone : '',
+      propertyId: p.property ? p.property._id : '',
+      propertyName: p.property ? p.property.name : '',
+      unitType: p.tenant ? p.tenant.unitType : '',
+      floor: p.tenant ? p.tenant.floor : '',
+      unitLabel: p.tenant ? p.tenant.unitLabel : '',
+      amount: p.amount,
+      amountPaid: p.amountPaid,
+      dueDate: p.dueDate,
+      status: p.status,
+    }));
+
+    res.json({
+      data: arrears
+    });
+  } catch (err) {
+    console.error('Error in getRentArrears:', err);
+    res.status(500).json({ error: 'Failed to fetch rent arrears.' });
+  }
 };
 
 const getOccupancyStats = async (req, res) => {
