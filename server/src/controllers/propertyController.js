@@ -108,6 +108,12 @@ const createProperty = async (req, res) => {
       console.warn('Image processing error:', err);
     }
 
+    // Apply payment instructions if paymentOptions are provided
+    let paymentOptions = req.body.paymentOptions;
+    if (paymentOptions) {
+      if (typeof paymentOptions === 'string') paymentOptions = JSON.parse(paymentOptions);
+      paymentOptions = require('../utils/applyPaymentInstructions')(paymentOptions);
+    }
     const property = await Property.create({
       name,
       address,
@@ -119,6 +125,7 @@ const createProperty = async (req, res) => {
       profilePicThumb,
       gallery,
       galleryThumbs,
+      ...(paymentOptions ? { paymentOptions } : {}),
     });
     res.status(201).json(property);
   } catch (err) {
@@ -231,6 +238,13 @@ const updateProperty = async (req, res) => {
     if (profilePicThumb) updateFields.profilePicThumb = profilePicThumb;
     if (gallery.length > 0) updateFields.gallery = gallery;
     if (galleryThumbs.length > 0) updateFields.galleryThumbs = galleryThumbs;
+    // Handle paymentOptions update
+    let paymentOptions = req.body.paymentOptions;
+    if (paymentOptions) {
+      if (typeof paymentOptions === 'string') paymentOptions = JSON.parse(paymentOptions);
+      paymentOptions = require('../utils/applyPaymentInstructions')(paymentOptions);
+      updateFields.paymentOptions = paymentOptions;
+    }
     let property = await Property.findByIdAndUpdate(id, updateFields, { new: true });
     if (!property) return res.status(404).json({ error: 'Property not found.' });
     // Manually populate tenant info for each unit
@@ -329,6 +343,8 @@ const assignCaretakerToProperty = async (req, res) => {
 // Assign a tenant to a specific unit in a property (supports grouped-by-floor structure)
 const assignTenantToUnit = async (req, res) => {
   try {
+    // Debug log removed
+    // Debug log removed
     const { propertyId, unitLabel } = req.params;
     const { tenantId } = req.body;
     const property = await Property.findById(propertyId);
@@ -354,13 +370,55 @@ const assignTenantToUnit = async (req, res) => {
         unit.status = 'occupied';
         // Also update the tenant's property, unitType, floor, unitLabel, and status
         const Tenant = require('../models/Tenant');
+        // Look up rent and set deposit = rent by default
+        const rent = unit.rent;
+        const deposit = unit.rent;
         await Tenant.findByIdAndUpdate(tenantId, {
           property: property._id,
           unitType: unit.type,
           floor: floorObj.floor,
           unitLabel: unit.label,
           status: 'Active',
+          rent: unit.rent,
+          deposit: unit.rent,
+          leaseType: typeof req.body.leaseType === 'string' && req.body.leaseType.trim() !== '' ? req.body.leaseType : undefined,
+          leaseStart: req.body.leaseStart || undefined,
+          leaseEnd: req.body.leaseEnd || undefined,
         });
+        // --- Create initial payment records for rent and deposit if not already present ---
+        const Payment = require('../models/Payment');
+        try {
+          if (unit.rent && tenantId) {
+            const existingRent = await Payment.findOne({ tenant: tenantId.toString(), type: 'rent', amount: unit.rent });
+            if (!existingRent) {
+              // Debug log removed
+              await Payment.create({
+                tenant: tenantId.toString(),
+                property: property._id,
+                type: 'rent',
+                amount: unit.rent,
+                amountPaid: 0,
+                status: 'unpaid',
+                dueDate: new Date(),
+              });
+            }
+            const existingDeposit = await Payment.findOne({ tenant: tenantId.toString(), type: 'deposit', amount: unit.rent });
+            if (!existingDeposit) {
+              // Debug log removed
+              await Payment.create({
+                tenant: tenantId.toString(),
+                property: property._id,
+                type: 'deposit',
+                amount: unit.rent,
+                amountPaid: 0,
+                status: 'unpaid',
+                dueDate: new Date(),
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Payment creation error:', err);
+        }
         // Log activity: tenant assigned to property/unit
         try {
           const Activity = require('../models/Activity');
@@ -408,6 +466,22 @@ const removeTenantFromUnit = async (req, res) => {
   }
 };
 
+// PATCH payment options for a property
+const updatePaymentOptions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let paymentOptions = req.body.paymentOptions;
+    if (!paymentOptions) return res.status(400).json({ error: 'paymentOptions required' });
+    if (typeof paymentOptions === 'string') paymentOptions = JSON.parse(paymentOptions);
+    paymentOptions = require('../utils/applyPaymentInstructions')(paymentOptions);
+    const property = await Property.findByIdAndUpdate(id, { paymentOptions }, { new: true });
+    if (!property) return res.status(404).json({ error: 'Property not found.' });
+    res.json(property);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update payment options.', details: err && err.message ? err.message : err });
+  }
+};
+
 module.exports = {
   createProperty,
   getLandlordProperties,
@@ -417,5 +491,6 @@ module.exports = {
   removeTenantFromProperty,
   assignCaretakerToProperty,
   assignTenantToUnit,
-  removeTenantFromUnit
+  removeTenantFromUnit,
+  updatePaymentOptions
 };

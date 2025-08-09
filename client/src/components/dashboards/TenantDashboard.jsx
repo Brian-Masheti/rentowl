@@ -32,6 +32,7 @@ const sectionTitles = {
 import TenantChecklistMenu from '../checklists/TenantChecklistMenu';
 
 import PersonalizedWelcome from '../shared/PersonalizedWelcome';
+import TenantMakePaymentModal from '../tenants/TenantMakePaymentModal';
 
 const sectionContent = {
   'dashboard': (
@@ -46,7 +47,7 @@ const sectionContent = {
   'tenant-checkin': <TenantChecklistMenu />, 
   'rent-payment-history': <p>See your rent payment history and receipts.</p>,
   'payment-status': <p>See your payment status here.</p>,
-  'make-payment': <p>Make a new rent payment securely.</p>,
+  'make-payment': null, // Will be handled in component for modal
   'receipts': <p>Download your rent payment receipts.</p>,
   'maintenance-requests': <p>Submit and track maintenance requests.</p>,
   'announcements': <p>Read the latest announcements from your landlord or caretaker.</p>,
@@ -55,6 +56,8 @@ const sectionContent = {
 };
 
 const TenantDashboard = () => {
+  // Properties state for payment options
+  const [properties, setProperties] = useState([]);
   // On mount, try to load last selected section from localStorage
   const getInitialSection = () => {
     if (typeof window !== 'undefined') {
@@ -74,6 +77,25 @@ const TenantDashboard = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [selectedSection]);
 
+  // Fetch property for tenant (for payment options)
+  const [tenantProperty, setTenantProperty] = useState(null);
+  useEffect(() => {
+    async function fetchTenantProperty() {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/tenants/me/property', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setTenantProperty(data.property || null);
+      } catch (err) {
+        setTenantProperty(null);
+        console.error('Error fetching tenant property:', err);
+      }
+    }
+    fetchTenantProperty();
+  }, []);
+
   // Redirect to landing page if not authenticated (check both token and user)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -84,6 +106,16 @@ const TenantDashboard = () => {
       }
     }
   }, []);
+
+  // Modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Get paymentOptions from the tenant's property
+  const paymentOptions = tenantProperty?.paymentOptions || [];
+  // Debug: log paymentOptions being passed to the modal
+  if (showPaymentModal) {
+    // eslint-disable-next-line no-console
+    // console.log('DEBUG paymentOptions for tenant modal:', paymentOptions);
+  }
 
   try {
     return (
@@ -100,13 +132,31 @@ const TenantDashboard = () => {
         </div>
         <div className="hidden md:flex" style={{ minHeight: '100vh', background: '#FFE3BB' }}>
           <TenantSidebar onSelect={setSelectedSection} selected={selectedSection} />
-          <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh' }}>
+          <main style={{ flex: 1, padding: 32, background: '#FFF8F0', minHeight: '100vh', position: 'relative' }}>
             <StickyNavBar
               label={(tenantMenu.find(item => item.key === selectedSection)?.label) || (sectionTitles[selectedSection] || 'Tenant Dashboard')}
               icon={tenantMenu.find(item => item.key === selectedSection)?.icon}
             />
             <div style={{ marginTop: 16 }}>
-              {sectionContent[selectedSection] || <div style={{ color: '#03A6A1', fontWeight: 600, fontSize: 22, background: '#FFF', padding: '24px', borderRadius: 8, border: '2px solid #03A6A1' }}>Coming soon: {sectionTitles[selectedSection] || 'This section'}</div>}
+              {selectedSection === 'make-payment' ? (
+                <>
+                  <button
+                    className="fixed z-50 bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-full font-bold shadow-lg text-base transition-all"
+                    style={{ background: '#03A6A1', color: 'white', boxShadow: '0 4px 24px 0 rgba(0,0,0,0.12)' }}
+                    onClick={() => setShowPaymentModal(true)}
+                  >
+                    <FaMoneyBillWave className="text-lg" />
+                    Make Payment
+                  </button>
+                  <TenantMakePaymentModal
+                    open={showPaymentModal}
+                    onClose={() => setShowPaymentModal(false)}
+                    paymentOptions={paymentOptions}
+                  />
+                </>
+              ) : (
+                sectionContent[selectedSection] || <div style={{ color: '#03A6A1', fontWeight: 600, fontSize: 22, background: '#FFF', padding: '24px', borderRadius: 8, border: '2px solid #03A6A1' }}>Coming soon: {sectionTitles[selectedSection] || 'This section'}</div>
+              )}
             </div>
           </main>
         </div>

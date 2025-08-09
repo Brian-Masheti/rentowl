@@ -658,7 +658,7 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
       <div className="mt-8 mb-32 md:mb-8">
         <UnassignedTenantSelector
           properties={properties}
-          onAssign={async (tenantId, propertyId, unitType, floor, unitLabel) => {
+          onAssign={async (tenantId, propertyId, unitType, floor, unitLabel, leaseType, leaseStart, leaseEnd) => {
             // Assign the tenant to the selected property/unit
             const API_URL = import.meta.env.VITE_API_URL || '';
             const token = localStorage.getItem('token');
@@ -670,7 +670,16 @@ const AddTenantSection = ({ properties, refresh, onAssignTenant }) => {
                   'Content-Type': 'application/json',
                   Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ tenantId }),
+                body: JSON.stringify({
+                  tenantId,
+                  propertyId,
+                  unitType,
+                  floor,
+                  unitLabel,
+                  leaseType,
+                  leaseStart,
+                  leaseEnd
+                }),
               });
               if (!assignRes.ok) {
                 let errMsg = 'Unknown error';
@@ -970,7 +979,7 @@ function LandlordDashboard() {
     const property = properties.find(p => p.name === tenant.propertyName || p.id === tenant.propertyId || (tenant.property && p.id === tenant.property._id));
     // Get all floors and all units/rooms for this property
     const floors = property ? (property.units || []).map(floorObj => floorObj.floor) : [];
-    const [form, setForm] = useState({
+    const [form, setForm] = useState(() => ({
       firstName: tenant.firstName,
       lastName: tenant.lastName,
       email: tenant.email,
@@ -978,9 +987,39 @@ function LandlordDashboard() {
       floor: tenant.floor || '',
       unitLabel: tenant.unitLabel || '',
       leaseType: tenant.leaseType || 'lease',
-      leaseStart: tenant.leaseStart ? tenant.leaseStart.slice(0, 10) : '',
-      leaseEnd: tenant.leaseEnd ? tenant.leaseEnd.slice(0, 10) : '',
-    });
+      leaseStart: tenant.leaseStart ? new Date(tenant.leaseStart).toISOString().slice(0, 10) : '',
+      leaseEnd: tenant.leaseEnd ? new Date(tenant.leaseEnd).toISOString().slice(0, 10) : '',
+    }));
+    // Ensure form is updated if tenant prop changes
+    useEffect(() => {
+      setForm({
+        firstName: tenant.firstName,
+        lastName: tenant.lastName,
+        email: tenant.email,
+        phone: tenant.phone,
+        floor: tenant.floor || '',
+        unitLabel: tenant.unitLabel || '',
+        leaseType: tenant.leaseType || 'lease',
+        leaseStart: tenant.leaseStart ? new Date(tenant.leaseStart).toISOString().slice(0, 10) : '',
+        leaseEnd: tenant.leaseEnd ? new Date(tenant.leaseEnd).toISOString().slice(0, 10) : '',
+      });
+    }, [tenant]);
+
+    // Close modal on Esc or outside click
+    useEffect(() => {
+      const handleEsc = (e) => {
+        if (e.key === 'Escape') onClose();
+      };
+      const handleClick = (e) => {
+        if (e.target.classList && e.target.classList.contains('edit-tenant-modal-bg')) onClose();
+      };
+      window.addEventListener('keydown', handleEsc);
+      window.addEventListener('mousedown', handleClick);
+      return () => {
+        window.removeEventListener('keydown', handleEsc);
+        window.removeEventListener('mousedown', handleClick);
+      };
+    }, [onClose]);
     const [success, setSuccess] = useState(false);
     // Get units for selected floor
     const floorObj = property && form.floor ? (property.units || []).find(f => f.floor === form.floor) : null;

@@ -25,6 +25,20 @@ const PropertySchema = new mongoose.Schema({
   gallery: { type: Array, default: [] },
   galleryThumbs: { type: Array, default: [] },
   isDeleted: { type: Boolean, default: false },
+  isUniform: { type: Boolean, default: false },
+  paymentOptions: {
+    type: [
+      {
+        method: { type: String, required: true }, // e.g., 'mpesa', 'dtb', 'kcb', 'coop', 'equity', 'family', 'manual', 'custom'
+        label: { type: String }, // e.g., 'Direct Mpesa', 'DTB', etc.
+        paybill: { type: String }, // e.g., 516600 for DTB
+        account: { type: String }, // e.g., phone number, account number, till, etc.
+        instructions: { type: String }, // custom instructions for tenant
+        enabled: { type: Boolean, default: true }
+      }
+    ],
+    default: []
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Property', PropertySchema);

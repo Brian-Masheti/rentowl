@@ -9,6 +9,9 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
   const [selectedFloor, setSelectedFloor] = useState('');
   const [unitOptions, setUnitOptions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [leaseType, setLeaseType] = useState('');
+  const [leaseStart, setLeaseStart] = useState('');
+  const [leaseEnd, setLeaseEnd] = useState('');
 
   useEffect(() => {
     const fetchUnassigned = async () => {
@@ -81,6 +84,7 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
       const prop = properties.find((p) => p.id === selectedProperty);
       const floorObj = prop?.units?.find(f => f.floor === selectedFloor);
       if (floorObj && Array.isArray(floorObj.units)) {
+        // Only show units that are vacant (not assigned to any tenant)
         setUnitOptions(floorObj.units.filter(u => u.status === 'vacant' && u.type === selectedUnitType));
       } else {
         setUnitOptions([]);
@@ -172,9 +176,11 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
                 className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A6A1]"
               >
                 <option value="">Select Floor</option>
-                {properties.find(p => p.id === selectedProperty)?.units?.map(floorObj => (
-                  <option key={floorObj.floor} value={floorObj.floor}>{floorObj.floor}</option>
-                ))}
+                {properties.find(p => p.id === selectedProperty)?.units
+                  ?.filter(floorObj => floorObj.units && floorObj.units.some(u => u.status === 'vacant'))
+                  .map(floorObj => (
+                    <option key={floorObj.floor} value={floorObj.floor}>{floorObj.floor}</option>
+                  ))}
               </select>
             )}
             {selectedFloor && unitTypes.length > 0 && (
@@ -191,48 +197,106 @@ const UnassignedTenantSelector = ({ onAssign, properties }) => {
               </select>
             )}
             {selectedFloor && selectedUnitType && (
-              <select
-                value={unitOptions.length > 0 ? unitOptions[0].label : ''}
-                onChange={e => setUnitOptions(unitOptions.map(u => u.label === e.target.value ? { ...u, selected: true } : { ...u, selected: false }))}
-                className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A6A1] text-black bg-white"
-                style={{ color: '#23272F', background: '#FFF' }}
-              >
-                <option value="">Select Room/Unit</option>
-                {unitOptions.map(u => (
-                  <option key={u.label} value={u.label} style={{ color: '#23272F', background: '#FFF' }}>{u.label}</option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={unitOptions.length > 0 ? unitOptions[0].label : ''}
+                  onChange={e => setUnitOptions(unitOptions.map(u => u.label === e.target.value ? { ...u, selected: true } : { ...u, selected: false }))}
+                  className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A6A1] text-black bg-white"
+                  style={{ color: '#23272F', background: '#FFF' }}
+                >
+                  <option value="">Select Room/Unit</option>
+                  {unitOptions.map(u => (
+                    <option key={u.label} value={u.label} style={{ color: '#23272F', background: '#FFF' }}>{u.label}</option>
+                  ))}
+                </select>
+                {/* Show rent and deposit for selected unit */}
+                {(() => {
+                  const selectedUnit = unitOptions.find(u => u.selected) || unitOptions[0];
+                  if (selectedUnit && selectedUnit.rent) {
+                    return (
+                      <div className="mt-2 p-2 rounded bg-[#03A6A1]/10 border border-[#03A6A1] text-[#03A6A1] font-semibold flex flex-col gap-1">
+                        <div>Rent: KES {selectedUnit.rent.toLocaleString()}</div>
+                        <div>Deposit: KES {selectedUnit.rent.toLocaleString()}</div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
             )}
-            <button
-              className="bg-[#03A6A1] text-white font-bold px-4 py-2 rounded hover:bg-[#FFA673] transition"
-              disabled={!selectedProperty || !selectedFloor || !selectedUnitType || unitOptions.length === 0}
-              onClick={() => {
-                // Assign the selected unit of the selected type on the selected floor
-                const selectedUnit = unitOptions.find(u => u.selected) || unitOptions[0];
-                if (selectedUnit) {
-                  onAssign(selectedTenant, selectedProperty, selectedUnitType, selectedFloor, selectedUnit.label);
-                }
-                setSelectedTenant('');
-                setSelectedProperty('');
-                setSelectedUnitType('');
-                setSelectedFloor('');
-                setUnitOptions([]);
-              }}
-            >
-              Assign
-            </button>
-            <button
-              className="ml-2 px-3 py-2 rounded bg-[#FFA673] text-white font-bold hover:bg-[#03A6A1] transition"
-              onClick={() => {
-                setSelectedTenant('');
-                setSelectedProperty('');
-                setSelectedUnitType('');
-                setSelectedFloor('');
-                setUnitOptions([]);
-              }}
-            >
-              Cancel
-            </button>
+            {/* Lease Type and Dates - minimal, modern layout, responsive and compact */}
+            <div className="flex flex-wrap gap-2 w-full max-w-2xl items-center">
+              <select
+                className="border rounded px-3 py-2 w-48 min-w-[160px]"
+                value={leaseType}
+                onChange={e => setLeaseType(e.target.value)}
+                required
+              >
+                <option value="">---Select lease type---</option>
+                <option value="lease">Lease (fixed-term)</option>
+                <option value="month-to-month">Month-to-Month</option>
+              </select>
+              {leaseType === 'lease' && (
+                <>
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2 w-40 min-w-[120px]"
+                    value={leaseStart}
+                    onChange={e => setLeaseStart(e.target.value)}
+                    required
+                    placeholder="Start Date"
+                    title="Lease Start Date"
+                  />
+                  <input
+                    type="date"
+                    className="border rounded px-3 py-2 w-40 min-w-[120px]"
+                    value={leaseEnd}
+                    onChange={e => setLeaseEnd(e.target.value)}
+                    required
+                    placeholder="End Date"
+                    title="Lease End Date"
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 mt-2 w-full">
+              <button
+                className="bg-[#03A6A1] text-white font-bold px-4 py-2 rounded hover:bg-[#FFA673] transition"
+                disabled={!selectedProperty || !selectedFloor || !selectedUnitType || unitOptions.length === 0 || !leaseType || (leaseType === 'lease' && (!leaseStart || !leaseEnd))}
+                onClick={() => {
+                  // Assign the selected unit of the selected type on the selected floor
+                  const selectedUnit = unitOptions.find(u => u.selected) || unitOptions[0];
+                  if (selectedUnit) {
+                    onAssign(selectedTenant, selectedProperty, selectedUnitType, selectedFloor, selectedUnit.label, leaseType, leaseStart, leaseEnd);
+                  }
+                  setSelectedTenant('');
+                  setSelectedProperty('');
+                  setSelectedUnitType('');
+                  setSelectedFloor('');
+                  setUnitOptions([]);
+                  setLeaseType('');
+                  setLeaseStart('');
+                  setLeaseEnd('');
+                }}
+              >
+                Assign
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-[#FFA673] text-white font-bold hover:bg-[#03A6A1] transition"
+                onClick={() => {
+                  setSelectedTenant('');
+                  setSelectedProperty('');
+                  setSelectedUnitType('');
+                  setSelectedFloor('');
+                  setUnitOptions([]);
+                  setLeaseType('');
+                  setLeaseStart('');
+                  setLeaseEnd('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
         {loading && <div className="text-gray-500 text-sm mt-2">Loading unassigned tenants...</div>}

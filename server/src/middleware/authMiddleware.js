@@ -20,6 +20,7 @@ function requireAuth(req, res, next) {
 
 function requireRole(roles) {
   return (req, res, next) => {
+    // Debug log removed
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Forbidden: insufficient role.' });
     }

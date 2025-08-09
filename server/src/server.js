@@ -32,6 +32,10 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Add body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Serve static images for Swagger UI logo
 app.use('/images', require('express').static(path.join(__dirname, '../../client/public/images')));
 const server = http.createServer(app);
@@ -57,6 +61,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+console.log('DEBUG: Registering /api/tenants routes');
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscription', subscriptionRoutes);

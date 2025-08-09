@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PaymentOptionsSection from './PaymentOptionsSection';
 
 const DEFAULT_UNIT_TYPES = [
   'Bedsitter',
@@ -23,6 +24,11 @@ const getImageUrl = (img) => {
 };
 
 const PropertyEditForm = ({ property, onSuccess, onClose }) => {
+  // Debug: log paymentOptions on mount
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('DEBUG property.paymentOptions:', property.paymentOptions);
+  }, [property]);
   const [name, setName] = useState(property.name || '');
   const [address, setAddress] = useState(property.address || '');
   const [description, setDescription] = useState(property.description || '');
@@ -44,6 +50,7 @@ const PropertyEditForm = ({ property, onSuccess, onClose }) => {
         }))
       : [{ type: '', count: '', rent: '' }]
   );
+  const [paymentOptions, setPaymentOptions] = useState(property.paymentOptions || []);
 
   const handleProfilePicChange = (e) => {
     const file = e.target.files?.[0];
@@ -100,6 +107,7 @@ const PropertyEditForm = ({ property, onSuccess, onClose }) => {
       formData.append('address', address);
       formData.append('description', description);
       formData.append('units', JSON.stringify(unitsPayload));
+      formData.append('paymentOptions', JSON.stringify(paymentOptions));
       if (profilePic) formData.append('profilePic', profilePic);
       gallery.forEach((file) => formData.append('gallery', file));
       const token = localStorage.getItem('token');
@@ -256,6 +264,12 @@ const PropertyEditForm = ({ property, onSuccess, onClose }) => {
           required
         />
       </div>
+      {/* Payment Options Section - placed before floors/units for visibility */}
+      <div className="border p-3 rounded bg-[#F8F8F8] mb-4 mt-2">
+        <label className="block font-semibold mb-1 text-[#03A6A1] text-lg">Payment Options</label>
+        <p className="text-xs text-gray-500 mb-2">Configure how tenants can pay for this property (Mpesa, Bank, etc).</p>
+        <PaymentOptionsSection value={paymentOptions} onChange={setPaymentOptions} />
+      </div>
       <div>
         <label className="block font-semibold mb-1">Does this property have only one type of unit?</label>
         <div className="flex gap-4 mt-1">
@@ -360,6 +374,11 @@ const PropertyEditForm = ({ property, onSuccess, onClose }) => {
           onChange={e => setDescription(e.target.value)}
           rows={3}
         />
+      </div>
+      {/* Payment Options Section */}
+      <div className="border p-3 rounded bg-[#F8F8F8] mb-2">
+        <label className="block font-semibold mb-1 text-[#03A6A1]">Payment Options</label>
+        <PaymentOptionsSection value={paymentOptions} onChange={setPaymentOptions} />
       </div>
       <button
         type="submit"

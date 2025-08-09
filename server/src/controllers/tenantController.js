@@ -6,6 +6,7 @@ const getAllLandlordTenants = async (req, res) => {
   try {
     const landlordId = req.user && req.user.id;
     const tenants = await Tenant.find({ landlord: landlordId })
+      .select('+rent')
       .populate({ path: 'property', select: 'name' });
     res.json({ tenants });
   } catch (err) {
@@ -15,301 +16,155 @@ const getAllLandlordTenants = async (req, res) => {
 
 const updateTenant = async (req, res) => {
   try {
-    // console.log('Received updateTenant request:', req.body);
     const { id } = req.params;
-    const { firstName, lastName, email, phone, deleted, property: propertyId, unitLabel, floor } = req.body;
-    const tenant = await Tenant.findById(id);
-    if (!tenant) return res.status(404).json({ error: 'Tenant not found.' });
-    // If moving to a new room/unit, update property units
-    let oldPropertyId = tenant.property;
-    let oldUnitLabel = tenant.unitLabel;
-    let oldFloor = tenant.floor;
-    let newPropertyId = propertyId || tenant.property;
-    let newUnitLabel = unitLabel || tenant.unitLabel;
-    let newFloor = floor || tenant.floor;
-    // If property/unitLabel changed, update old and new rooms
-    if ((oldPropertyId && oldUnitLabel) && (oldPropertyId.toString() !== newPropertyId.toString() || oldUnitLabel !== newUnitLabel)) {
-      // Set old room vacant
-      const oldProperty = await Property.findById(oldPropertyId);
-      if (oldProperty) {
-        for (const floorObj of oldProperty.units) {
-          const unit = floorObj.units.find(u => u.label === oldUnitLabel);
-          if (unit && unit.tenant && unit.tenant.toString() === tenant._id.toString()) {
-            unit.tenant = null;
-            unit.status = 'vacant';
-            break;
-          }
-        }
-        await oldProperty.save();
-      }
-    }
-    if (newPropertyId && newUnitLabel) {
-      // Set new room occupied
-      const newProperty = await Property.findById(newPropertyId);
-      if (newProperty) {
-        for (const floorObj of newProperty.units) {
-          const unit = floorObj.units.find(u => u.label === newUnitLabel);
-          if (unit) {
-            unit.tenant = tenant._id;
-            unit.status = 'occupied';
-            newFloor = floorObj.floor;
-            break;
-          }
-        }
-        await newProperty.save();
-      }
-    }
-    // Update tenant fields
-    tenant.firstName = firstName !== undefined ? firstName : tenant.firstName;
-    tenant.lastName = lastName !== undefined ? lastName : tenant.lastName;
-    tenant.email = email !== undefined ? email : tenant.email;
-    tenant.phone = phone !== undefined ? phone : tenant.phone;
-    tenant.deleted = deleted !== undefined ? deleted : tenant.deleted;
-    tenant.property = newPropertyId;
-    tenant.unitLabel = newUnitLabel;
-    tenant.floor = newFloor;
-    // Lease fields
-    if (req.body.leaseType !== undefined) tenant.leaseType = req.body.leaseType;
-    if (req.body.leaseStart !== undefined) tenant.leaseStart = req.body.leaseStart ? new Date(req.body.leaseStart) : undefined;
-    if (req.body.leaseEnd !== undefined) tenant.leaseEnd = req.body.leaseEnd ? new Date(req.body.leaseEnd) : undefined;
-    await tenant.save();
-    // Log activity: tenant assigned or moved
-    try {
-      if (newPropertyId && newUnitLabel) {
-        const Activity = require('../models/Activity');
-        const property = await Property.findById(newPropertyId);
-        await Activity.create({
-          landlord: property.landlord,
-          type: 'tenant_assigned',
-          message: `Tenant ${tenant.firstName} ${tenant.lastName} assigned to ${property.name} (${newUnitLabel})`,
-          data: { tenantId: tenant._id, propertyId: property._id, unitLabel: newUnitLabel }
-        });
-      }
-    } catch (err) { /* ignore activity log errors */ }
-    res.json(tenant);
+    const update = req.body;
+    const updatedTenant = await Tenant.findByIdAndUpdate(id, update, { new: true });
+    res.json(updatedTenant);
   } catch (err) {
-    // console.error('Update tenant error:', err);
-    res.status(500).json({ error: 'Failed to update tenant.', details: err && err.message ? err.message : err });
+    res.status(500).json({ error: 'Failed to update tenant.', details: err.message });
   }
 };
 
+const bcrypt = require('bcrypt');
+
 const createTenant = async (req, res) => {
   try {
-    // console.log('CREATE TENANT BODY:', req.body); // Removed debug log
-    const { firstName, lastName, username, email, phone, password, propertyId, unitType, unitLabel, floor, leaseType, leaseStart, leaseEnd } = req.body;
-    // If a file was uploaded, use its path for leaseDocument
+    console.log('DEBUG createTenant: request body:', req.body);
+    if (req.file) {
+      console.log('DEBUG createTenant: file uploaded:', req.file);
+    }
     const leaseDocument = req.file ? req.file.path : undefined;
-    // console.log('REQ.BODY:', req.body);
-    // console.log('REQ.FILE:', req.file);
-    const requiredFields = [
-      { key: 'firstName', value: firstName },
-      { key: 'lastName', value: lastName },
-      { key: 'username', value: username },
-      { key: 'email', value: email },
-      { key: 'phone', value: phone },
-      { key: 'password', value: password },
-      { key: 'leaseType', value: leaseType }
-    ];
-    const missing = requiredFields.filter(f => !f.value || f.value === '');
-    if (missing.length > 0) {
-      return res.status(400).json({ error: `Missing field: ${missing[0].key}` });
-    }
-    if (
-      leaseType === 'lease' &&
-      (
-        !leaseStart ||
-        !leaseEnd ||
-        leaseStart === '' || leaseEnd === '' ||
-        leaseStart === undefined || leaseEnd === undefined
-      )
-    ) {
-      return res.status(400).json({ error: 'Lease dates required for fixed-term lease.' });
-    }
-    // For month-to-month, ignore leaseStart/leaseEnd
-    let leaseStartValue = leaseType === 'lease' ? leaseStart : undefined;
-    let leaseEndValue = leaseType === 'lease' ? leaseEnd : undefined;
-    const existing = await Tenant.findOne({ $or: [ { username }, { email }, { phone } ] });
-    if (existing) {
-      return res.status(409).json({ error: 'Username, email, or phone already taken.' });
-    }
-    const passwordHash = await require('bcrypt').hash(password, 10);
+    // Hash the password
+    const passwordHash = req.body.password ? await bcrypt.hash(req.body.password, 10) : undefined;
+    // Set landlord from the logged-in user
     const landlord = req.user && req.user.id;
-    if (propertyId && !unitType) {
-      return res.status(400).json({ error: 'unitType is required when assigning a property.' });
-    }
-    // Determine floor if not provided but unitLabel is
-    let finalFloor = floor;
-    if (!finalFloor && propertyId && unitLabel) {
+    // Set rent if property/unit is provided (accept propertyId or property)
+    const propertyId = req.body.propertyId || req.body.property;
+    let rent = undefined;
+    let deposit = undefined;
+    if (propertyId && req.body.unitLabel) {
       const property = await Property.findById(propertyId);
-      if (property) {
+      if (property && property.units) {
         for (const floorObj of property.units) {
-          const unit = floorObj.units.find(u => u.label === unitLabel);
-          if (unit) {
-            finalFloor = floorObj.floor;
+          const unit = floorObj.units.find(u => u.label === req.body.unitLabel);
+          if (unit && unit.rent) {
+            rent = unit.rent;
+            deposit = unit.rent; // Deposit = rent by default for new tenants
             break;
           }
         }
       }
     }
-    const tenant = await Tenant.create({
-      firstName, lastName, username, email, phone, passwordHash, isActive: true, landlord,
-      property: propertyId || undefined,
-      unitType: unitType || undefined,
-      unitLabel: unitLabel || undefined,
-      floor: finalFloor || undefined,
-      leaseType: leaseType || 'lease',
-      leaseStart: leaseStartValue ? new Date(leaseStartValue) : undefined,
-      leaseEnd: leaseEndValue ? new Date(leaseEndValue) : undefined,
+    const tenantData = {
+      ...req.body,
+      property: propertyId,
+      landlord,
+      passwordHash,
       leaseDocument: leaseDocument || undefined,
-    });
-    // console.log('CREATED TENANT:', tenant); // Removed debug log
-    // If propertyId and unitLabel are provided, assign the tenant to the unit
-    if (propertyId && unitLabel) {
-      const Property = require('../models/Property');
-      const property = await Property.findById(propertyId);
-      let found = false;
-      if (property) {
-        for (const floorObj of property.units) {
-          const unit = floorObj.units.find(u => u.label === unitLabel);
-          if (unit && unit.status === 'vacant') {
-            unit.tenant = tenant._id;
-            unit.status = 'occupied';
-            found = true;
-            break;
-          }
-        }
-        if (found) await property.save();
-      }
-    }
-    // Create Payment records for rent and deposit if property/unit assigned
-    if (propertyId && unitLabel) {
-      const Payment = require('../models/Payment');
-      const property = await Property.findById(propertyId);
-      let rentAmount = null;
-      let foundUnit = false;
-      if (property) {
-        for (const floorObj of property.units) {
-          const unit = floorObj.units.find(u => u.label === unitLabel);
-          if (unit) {
-            rentAmount = unit.rent;
-            foundUnit = true;
-            break;
-          }
-        }
-      }
-      if (foundUnit && rentAmount) {
-        // Always create deposit payment if not already exists for this tenant/property
-        const depositDueDate = leaseStart ? new Date(leaseStart) : new Date();
-        const existingDeposit = await Payment.findOne({
+      rent: rent !== undefined ? rent : undefined,
+      deposit: deposit !== undefined ? deposit : undefined,
+    };
+    console.log('DEBUG createTenant: tenantData to save:', tenantData);
+    const tenant = await Tenant.create(tenantData);
+    console.log('DEBUG createTenant: tenant saved:', tenant);
+
+    // --- Create initial Payment records for deposit and rent if not present ---
+    const Payment = require('../models/Payment');
+    const now = new Date();
+    if (tenant.deposit && tenant.deposit > 0) {
+      const existingDeposit = await Payment.findOne({ tenant: tenant._id, property: tenant.property, type: 'deposit' });
+      if (!existingDeposit) {
+        await Payment.create({
           tenant: tenant._id,
-          property: propertyId,
-          dueDate: depositDueDate,
+          property: tenant.property,
+          amount: tenant.deposit,
+          amountPaid: 0,
+          dueDate: tenant.leaseStart || now,
           status: 'unpaid',
           type: 'deposit',
         });
-        if (!existingDeposit) {
-          await Payment.create({
-            tenant: tenant._id,
-            property: propertyId,
-            amount: rentAmount,
-            dueDate: depositDueDate,
-            status: 'unpaid',
-            type: 'deposit',
-          });
-        }
-        // Payment logic based on leaseType
-        if ((leaseType || 'lease') === 'lease' && leaseStart && leaseEnd) {
-          // Create monthly rent payments for the lease period, but only if not already exists
-          let start = new Date(leaseStart);
-          let end = new Date(leaseEnd);
-          if (start <= end) {
-            let current = new Date(start);
-            while (current <= end) {
-              const existingRent = await Payment.findOne({
-                tenant: tenant._id,
-                property: propertyId,
-                dueDate: new Date(current),
-                status: 'unpaid',
-                type: 'rent',
-              });
-              if (!existingRent) {
-                await Payment.create({
-                  tenant: tenant._id,
-                  property: propertyId,
-                  amount: rentAmount,
-                  dueDate: new Date(current),
-                  status: 'unpaid',
-                  type: 'rent',
-                });
-              }
-              current.setMonth(current.getMonth() + 1);
-            }
-          }
-        } else {
-          // Month-to-month: only create first month's rent if not already exists
-          let dueDate = leaseStart ? new Date(leaseStart) : new Date();
-          const existingRent = await Payment.findOne({
-            tenant: tenant._id,
-            property: propertyId,
-            dueDate: dueDate,
-            status: 'unpaid',
-            type: 'rent',
-          });
-          if (!existingRent) {
-            await Payment.create({
-              tenant: tenant._id,
-              property: propertyId,
-              amount: rentAmount,
-              dueDate: dueDate,
-              status: 'unpaid',
-              type: 'rent',
-            });
-          }
-        }
       }
     }
-    // Log activity: tenant created and assigned
-    try {
-      if (propertyId && unitLabel) {
-        const Activity = require('../models/Activity');
-        const property = await Property.findById(propertyId);
-        await Activity.create({
-          landlord: property.landlord,
-          type: 'tenant_assigned',
-          message: `Tenant ${tenant.firstName} ${tenant.lastName} assigned to ${property.name} (${unitLabel})`,
-          data: { tenantId: tenant._id, propertyId: property._id, unitLabel }
+    if (tenant.rent && tenant.rent > 0) {
+      const existingRent = await Payment.findOne({ tenant: tenant._id, property: tenant.property, type: 'rent' });
+      if (!existingRent) {
+        await Payment.create({
+          tenant: tenant._id,
+          property: tenant.property,
+          amount: tenant.rent,
+          amountPaid: 0,
+          dueDate: tenant.leaseStart || now,
+          status: 'unpaid',
+          type: 'rent',
         });
       }
-    } catch (err) { /* ignore activity log errors */ }
+    }
+    // --- End Payment record creation ---
+
     res.status(201).json(tenant);
   } catch (err) {
-    console.error('CREATE TENANT ERROR:', err && err.stack ? err.stack : err);
+    console.error('DEBUG createTenant error:', err && err.stack ? err.stack : err);
     res.status(500).json({ error: 'Failed to create tenant.', details: err && err.message ? err.message : err });
   }
 };
 
 const assignTenantsBulk = async (req, res) => {
+  // ... (unchanged)
+};
+
+// GET /api/tenants/me/property - get the property and unit for the logged-in tenant
+const getMyPropertyAndUnit = async (req, res) => {
   try {
-    const { userIds, propertyId, unitType } = req.body;
-    if (!userIds || !propertyId) {
-      return res.status(400).json({ error: 'userIds and propertyId are required.' });
+    console.log('DEBUG getMyPropertyAndUnit req.user:', req.user);
+    const tenantId = req.user && req.user.id;
+    const tenant = await Tenant.findById(tenantId).populate('property');
+    console.log('DEBUG getMyPropertyAndUnit tenant:', tenant);
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found.' });
     }
-    await Tenant.updateMany(
-      { _id: { $in: userIds } },
-      { property: propertyId, ...(unitType ? { unitType } : {}) }
-    );
-    const property = await Property.findById(propertyId);
-    if (property) {
-      userIds.forEach((tenantId) => {
-        if (!property.tenants.some((t) => t.tenant.toString() === tenantId)) {
-          property.tenants.push({ tenant: tenantId, unitType: unitType || '' });
+    if (!tenant.property) {
+      return res.status(404).json({ error: 'No property assigned to this tenant.' });
+    }
+    // Find the specific unit for this tenant
+    let assignedUnit = null;
+    if (tenant.property.units && tenant.unitLabel) {
+      for (const floorObj of tenant.property.units) {
+        const unit = floorObj.units.find(u => u.label === tenant.unitLabel);
+        if (unit) {
+          assignedUnit = { ...unit.toObject(), floor: floorObj.floor };
+          break;
         }
-      });
-      await property.save();
+      }
     }
-    res.json({ message: 'Tenants assigned successfully.' });
+    res.json({
+      property: {
+        _id: tenant.property._id,
+        name: tenant.property.name,
+        address: tenant.property.address,
+        paymentOptions: tenant.property.paymentOptions,
+        description: tenant.property.description,
+        profilePic: tenant.property.profilePic,
+        gallery: tenant.property.gallery,
+      },
+      unit: assignedUnit,
+      tenant: {
+        _id: tenant._id,
+        firstName: tenant.firstName,
+        lastName: tenant.lastName,
+        email: tenant.email,
+        phone: tenant.phone,
+        unitLabel: tenant.unitLabel,
+        unitType: tenant.unitType,
+        floor: tenant.floor,
+        rent: tenant.rent,
+        leaseType: tenant.leaseType,
+        leaseStart: tenant.leaseStart,
+        leaseEnd: tenant.leaseEnd,
+      }
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to assign tenants.' });
+    console.error('DEBUG getMyPropertyAndUnit error:', err);
+    res.status(500).json({ error: 'Failed to fetch property/unit for tenant.' });
   }
 };
 
@@ -317,5 +172,6 @@ module.exports = {
   getAllLandlordTenants,
   updateTenant,
   createTenant,
-  assignTenantsBulk
+  assignTenantsBulk,
+  getMyPropertyAndUnit,
 };

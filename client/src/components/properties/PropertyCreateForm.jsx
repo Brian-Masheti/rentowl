@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PaymentOptionsSection from './PaymentOptionsSection';
 
 const DEFAULT_UNIT_TYPES = [
   'Bedsitter',
@@ -25,6 +26,7 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isUniform, setIsUniform] = useState('');
+  const [paymentOptions, setPaymentOptions] = useState([]);
   // Uniform
   const [uniformType, setUniformType] = useState('');
   const [uniformRent, setUniformRent] = useState('');
@@ -536,6 +538,11 @@ const PropertyCreateForm = ({ onSuccess, onClose }) => {
             ))}
           </div>
         )}
+      </div>
+      {/* Payment Options Section */}
+      <div className="border p-3 rounded bg-[#F8F8F8] mb-2">
+        <label className="block font-semibold mb-1 text-[#03A6A1]">Payment Options</label>
+        <PaymentOptionsSection value={paymentOptions} onChange={setPaymentOptions} />
       </div>
       <div className="sticky bottom-0 left-0 bg-white pt-4 pb-2 z-20 flex justify-end">
         <button

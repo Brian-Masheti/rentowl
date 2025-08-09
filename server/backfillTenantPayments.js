@@ -49,6 +49,13 @@ async function backfill() {
         console.log(`  - Property ${property.name} units: [${allLabels.join(', ')}]`);
       }
       if (rentAmount) {
+        // Set rent and deposit on tenant if missing
+        if (!tenant.rent || !tenant.deposit) {
+          tenant.rent = rentAmount;
+          tenant.deposit = rentAmount;
+          await tenant.save();
+          console.log('  - Set tenant.rent and tenant.deposit');
+        }
         // Create deposit payment (type: 'deposit')
         await Payment.create({
           tenant: tenant._id,

@@ -59,16 +59,7 @@ const register = async (req, res) => {
     } else if (role === 'tenant') {
       const landlordId = landlord || (req.user && req.user.id);
       user = await Tenant.create({ firstName, lastName, username, email, phone, passwordHash, isActive: true, landlord: landlordId });
-      await User.create({
-        firstName,
-        lastName,
-        username,
-        email,
-        phone,
-        passwordHash,
-        role: 'tenant',
-        isActive: true,
-      });
+      // Do NOT create a User document for tenants
       token = jwt.sign(
         { id: user._id, username: user.username, role: 'tenant' },
         JWT_SECRET,
@@ -110,6 +101,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
+    // Only use the tenants collection for tenant logins
     let user = await User.findOne({ $or: [ { username: identifier }, { email: identifier } ] });
     let role = user && user.role;
     if (!user) {
@@ -122,6 +114,7 @@ const login = async (req, res) => {
       }
     }
     if (!user) {
+      // Always use the tenants collection for tenants
       user = await Tenant.findOne({ $or: [ { username: identifier }, { email: identifier } ] });
       role = user ? 'tenant' : undefined;
     }
@@ -132,6 +125,11 @@ const login = async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+    // If role is tenant, make sure user is from tenants collection
+    if (role === 'tenant' && !(user instanceof Tenant)) {
+      user = await Tenant.findOne({ username: user.username });
+      if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
+    }
     const token = generateUserToken(user);
     res.json({
       token,

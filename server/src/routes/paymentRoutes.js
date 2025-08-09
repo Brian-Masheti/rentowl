@@ -25,4 +25,11 @@ router.post('/:id/digital', requireAuth, requireRole(['tenant']), paymentControl
 // GET /api/payments/:id/receipt - Download/fetch receipt
 router.get('/:id/receipt', requireAuth, paymentController.getPaymentReceipt);
 
+// POST /api/payments/manual - Landlord records a batch/manual payment (for modal)
+router.post('/manual', requireAuth, requireRole(['landlord', 'admin']), paymentController.manualPayment);
+
+// Mpesa Daraja endpoints (if you want to include them here)
+const mpesaRoutes = require('./mpesaRoutes');
+router.use('/mpesa', mpesaRoutes);
+
 module.exports = router;

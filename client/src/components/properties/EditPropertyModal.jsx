@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PaymentOptionsSection from './PaymentOptionsSection';
+import { FaTrash } from 'react-icons/fa';
 
 // UniformUnitsAdder: quick add multiple units of the same type/rent
 function UniformUnitsAdder({ onAdd }) {
@@ -60,8 +62,13 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     address: property.address || '',
     description: property.description || '',
     units: property.units ? JSON.parse(JSON.stringify(property.units)) : [],
-  } : { name: '', address: '', description: '', units: [] });
+    paymentOptions: property.paymentOptions || [],
+  } : { name: '', address: '', description: '', units: [], paymentOptions: [] });
   const [activeFloor, setActiveFloor] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteIdx, setDeleteIdx] = useState(null);
+  const [deleteType, setDeleteType] = useState(null); // 'floor' or 'unit'
+  const [deleteUnitIdx, setDeleteUnitIdx] = useState(null); // for unit deletion
   const [coverFile, setCoverFile] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL || '';
   const getImageUrl = (img) => {
@@ -106,6 +113,7 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
       address: property.address || '',
       description: property.description || '',
       units: property.units ? JSON.parse(JSON.stringify(property.units)) : [],
+      paymentOptions: property.paymentOptions || [],
     });
     setActiveFloor(0);
     setCoverFile(null);
@@ -119,6 +127,13 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     if (!open) return;
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
+        if (showDeleteModal) {
+          // Only close the delete modal, do not propagate
+          e.stopPropagation();
+          if (deleteType === 'floor') cancelRemoveFloor();
+          else if (deleteType === 'unit') cancelRemoveUnit();
+          return;
+        }
         if (galleryViewer.open) {
           setGalleryViewer({ open: false, idx: 0 });
         } else {
@@ -127,13 +142,13 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
       }
     };
     const handleClick = (e) => { if (modalRef.current && !modalRef.current.contains(e.target)) onClose(); };
-    window.addEventListener('keydown', handleEsc);
+    window.addEventListener('keydown', handleEsc, true);
     window.addEventListener('mousedown', handleClick);
     return () => {
-      window.removeEventListener('keydown', handleEsc);
+      window.removeEventListener('keydown', handleEsc, true);
       window.removeEventListener('mousedown', handleClick);
     };
-  }, [open, onClose, galleryViewer.open]);
+  }, [open, onClose, galleryViewer.open, showDeleteModal, deleteType]);
 
   if (!open || !property) return null;
 
@@ -143,12 +158,31 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     setActiveFloor(form.units.length);
   };
   // Remove a floor
+  // Soft delete floor
   const removeFloor = (idx) => {
-    setForm(f => ({ ...f, units: f.units.filter((_, i) => i !== idx) }));
+    setShowDeleteModal(true);
+    setDeleteIdx(idx);
+    setDeleteType('floor');
+  };
+  const confirmRemoveFloor = () => {
+    setForm(f => {
+      const units = [...f.units];
+      if (units[deleteIdx]) units[deleteIdx].deleted = true;
+      return { ...f, units };
+    });
     setActiveFloor(0);
+    setShowDeleteModal(false);
+    setDeleteIdx(null);
+    setDeleteType(null);
+  };
+  const cancelRemoveFloor = () => {
+    setShowDeleteModal(false);
+    setDeleteIdx(null);
+    setDeleteType(null);
   };
   // Add a unit to a floor
   const addUnit = (floorIdx) => {
+    console.log('DEBUG: addUnit called for floorIdx', floorIdx);
     setForm(f => {
       const units = [...f.units];
       units[floorIdx].units.push({ ...defaultUnit });
@@ -156,12 +190,31 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     });
   };
   // Remove a unit from a floor
+  // Soft delete unit
   const removeUnit = (floorIdx, unitIdx) => {
+    setShowDeleteModal(true);
+    setDeleteIdx(floorIdx);
+    setDeleteUnitIdx(unitIdx);
+    setDeleteType('unit');
+  };
+  const confirmRemoveUnit = () => {
     setForm(f => {
       const units = [...f.units];
-      units[floorIdx].units = units[floorIdx].units.filter((_, i) => i !== unitIdx);
+      if (units[deleteIdx] && units[deleteIdx].units[deleteUnitIdx]) {
+        units[deleteIdx].units[deleteUnitIdx].deleted = true;
+      }
       return { ...f, units };
     });
+    setShowDeleteModal(false);
+    setDeleteIdx(null);
+    setDeleteUnitIdx(null);
+    setDeleteType(null);
+  };
+  const cancelRemoveUnit = () => {
+    setShowDeleteModal(false);
+    setDeleteIdx(null);
+    setDeleteUnitIdx(null);
+    setDeleteType(null);
   };
   // Update a unit field
   const updateUnit = (floorIdx, unitIdx, field, value) => {
@@ -193,6 +246,7 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
     formData.append('address', form.address);
     formData.append('description', form.description);
     formData.append('units', JSON.stringify(form.units));
+    formData.append('paymentOptions', JSON.stringify(form.paymentOptions));
     if (coverFile) {
       formData.append('profilePic', coverFile);
     }
@@ -227,6 +281,12 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
           <input className="border rounded px-3 py-2 w-full" placeholder="Property Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           <input className="border rounded px-3 py-2 w-full" placeholder="Address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
           <textarea className="border rounded px-3 py-2 w-full" placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          {/* Payment Options Section */}
+          <div className="border p-3 rounded bg-[#F8F8F8] mb-4 mt-2">
+            <label className="block font-semibold mb-1 text-[#03A6A1] text-lg">Payment Options</label>
+            <p className="text-xs text-gray-500 mb-2">Configure how tenants can pay for this property (Mpesa, Bank, etc).</p>
+            <PaymentOptionsSection value={form.paymentOptions} onChange={opts => setForm(f => ({ ...f, paymentOptions: opts }))} />
+          </div>
           {/* Cover image upload */}
           <div className="flex items-center gap-3 mt-2">
             <label htmlFor="cover-upload" className="bg-[#03A6A1] text-white rounded-full px-4 py-2 font-bold cursor-pointer hover:bg-[#FFA673] transition shadow">
@@ -397,14 +457,23 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
           </div>
           <div className="flex gap-2 mb-2 flex-wrap">
             {form.units.map((floorObj, idx) => (
-              <button
+              <div
                 key={idx}
-                className={`px-3 py-1 rounded-full font-bold border ${activeFloor === idx ? 'bg-[#03A6A1] text-white' : 'bg-white text-[#03A6A1] border-[#03A6A1]'}`}
+                className={`flex items-center px-3 py-1 rounded-full font-bold border cursor-pointer select-none ${activeFloor === idx ? 'bg-[#03A6A1] text-white' : 'bg-white text-[#03A6A1] border-[#03A6A1]'}`}
                 onClick={() => setActiveFloor(idx)}
+                style={{ minWidth: 80 }}
               >
-                {floorObj.floor || `Floor ${idx + 1}`}
-                <span className="ml-2 text-[#FF4F0F] cursor-pointer" onClick={e => { e.stopPropagation(); removeFloor(idx); }} title="Remove Floor">&times;</span>
-              </button>
+                <span>{floorObj.floor || `Floor ${idx + 1}`}</span>
+                <button
+                  type="button"
+                  className="ml-2 text-[#FF4F0F] text-xl font-bold hover:text-[#FFA673] transition"
+                  title="Delete Floor"
+                  onClick={e => { e.stopPropagation(); removeFloor(idx); }}
+                  style={{ background: 'none', border: 'none', outline: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
           {form.units[activeFloor] && (
@@ -415,18 +484,7 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
                 value={form.units[activeFloor].floor}
                 onChange={e => updateFloorLabel(activeFloor, e.target.value)}
               />
-              {/* Quick add uniform units */}
-              <UniformUnitsAdder
-                onAdd={(count, type, rent) => {
-                  setForm(f => {
-                    const units = [...f.units];
-                    for (let i = 0; i < count; i++) {
-                      units[activeFloor].units.push({ ...defaultUnit, type, rent });
-                    }
-                    return { ...f, units };
-                  });
-                }}
-              />
+              {/* Removed UniformUnitsAdder for edit form to prevent double-add and confusion */}
               <div className="flex flex-col gap-2">
                 {form.units[activeFloor].units.map((unit, uIdx) => (
                   <div key={uIdx} className="flex gap-2 items-center bg-[#FFF8F0] rounded p-2">
@@ -448,20 +506,45 @@ const EditPropertyModal = ({ open, onClose, property, onSuccess }) => {
                     <input className="border rounded px-2 py-1 w-20" placeholder="Rent" type="number" value={unit.rent} onChange={e => updateUnit(activeFloor, uIdx, 'rent', e.target.value)} />
                     {/* Label is autogenerated, display only if present */}
                     {unit.label && (
-                      <span className="bg-[#03A6A1]/10 text-[#03A6A1] px-2 py-1 rounded font-semibold text-xs">{unit.label}</span>
+                      <span className="font-bold bg-[#E6F7F8] border border-[#03A6A1] rounded-full px-3 py-1 text-[#03A6A1] tracking-wide shadow text-base" style={{ minWidth: 60, display: 'inline-block', textAlign: 'center' }}>{unit.label}</span>
                     )}
                     <select className="border rounded px-2 py-1 w-24" value={unit.status} onChange={e => updateUnit(activeFloor, uIdx, 'status', e.target.value)}>
                       <option value="vacant">Vacant</option>
                       <option value="occupied">Occupied</option>
                     </select>
-                    <button className="text-[#FF4F0F] hover:text-[#FFA673] text-lg font-bold px-2" onClick={() => removeUnit(activeFloor, uIdx)} title="Remove Unit">&times;</button>
+                    <button
+                      type="button"
+                      className="bg-[#FF4F0F] text-white rounded-full w-7 h-7 flex items-center justify-center font-bold hover:bg-[#FFA673] transition"
+                      title="Delete Unit"
+                      onClick={() => removeUnit(activeFloor, uIdx)}
+                    >
+                      <FaTrash />
+                    </button>
                   </div>
                 ))}
-                <button className="bg-[#03A6A1] text-white px-3 py-1 rounded-full font-bold hover:bg-[#FFA673] transition mt-2 w-fit" onClick={() => addUnit(activeFloor)}>+ Add Unit</button>
+                {/* Removed "+ Add Unit" button to prevent duplicate unit rows */}
               </div>
             </div>
           )}
         </div>
+        {/* Delete confirmation modal for floor/unit */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-xs w-full flex flex-col items-center">
+              <div className="text-[#FF4F0F] text-3xl mb-2"><FaTrash /></div>
+              <div className="font-bold text-lg mb-2">
+                {deleteType === 'floor' ? 'Delete Floor?' : 'Delete Unit?'}
+              </div>
+              <div className="text-gray-700 mb-4 text-center">
+                Are you sure you want to delete this {deleteType === 'floor' ? 'floor and all its units' : 'unit'}? This action can only be undone by contacting the super admin.
+              </div>
+              <div className="flex gap-4 justify-center">
+                <button className="bg-gray-300 text-gray-700 rounded-full px-4 py-1 font-semibold hover:bg-gray-400 transition" onClick={deleteType === 'floor' ? cancelRemoveFloor : cancelRemoveUnit}>Cancel</button>
+                <button className="bg-[#FF4F0F] text-white rounded-full px-4 py-1 font-semibold hover:bg-[#FFA673] transition" onClick={deleteType === 'floor' ? confirmRemoveFloor : confirmRemoveUnit}>Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex gap-2 mt-4 justify-end">
           <button className="px-4 py-2 rounded-full border border-[#FFA673] text-[#FFA673] bg-white font-bold hover:bg-[#FFA673] hover:text-white transition" onClick={onClose}>Cancel</button>
           <button className="bg-[#03A6A1] text-white px-4 py-2 rounded-full font-bold hover:bg-[#FFA673] transition" onClick={handleSave}>Save Changes</button>
